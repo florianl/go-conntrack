@@ -92,7 +92,7 @@ func (nfct *Nfct) Flush(f CtFamily) error {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtDelete),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsEcho,
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
 	}
@@ -105,14 +105,16 @@ func (nfct *Nfct) Dump(f CtFamily) ([]*Conn, error) {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGet),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsMatch | netlink.HeaderFlagsRoot,
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
 		},
 		Data: data,
 	}
 
-	// the first msg contains only the acknowledge, so we ignore it for the moment
-	_, err := nfct.con.Send(req)
+	verify, err := nfct.con.Send(req)
 	if err != nil {
+		return nil, err
+	}
+	if err := netlink.Validate(req, []netlink.Message{verify}); err != nil {
 		return nil, err
 	}
 
