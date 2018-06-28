@@ -135,6 +135,48 @@ func (nfct *Nfct) Dump(f CtFamily) ([]*Conn, error) {
 	return conn, nil
 }
 
+// Query conntrack subsystem for a certain attributes
+func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]*Conn, error) {
+	query, err := nestAttributes(filters)
+	if err != nil {
+		return nil, err
+	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
+
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGet),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+		},
+		Data: data,
+	}
+	verify, err := nfct.con.Send(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := netlink.Validate(req, []netlink.Message{verify}); err != nil {
+		return nil, err
+	}
+
+	reply, err := nfct.con.Receive()
+	if err != nil {
+		return nil, err
+	}
+
+	var conn []*Conn
+	for _, msg := range reply {
+		c, err := parseConnectionMsg(msg.Data[4:])
+		if err != nil {
+			return nil, err
+		}
+		conn = append(conn, c)
+	}
+
+	return conn, nil
+}
+
 // ErrMsg as defined in nlmsgerr
 type ErrMsg struct {
 	Code  int
