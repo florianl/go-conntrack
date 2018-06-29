@@ -3,6 +3,7 @@
 package conntrack
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/mdlayher/netlink"
@@ -57,6 +58,19 @@ const (
 	CtQCreateUpdate    CtQuery = iota
 	CtQDumpFilter      CtQuery = iota
 	CtQDumpFilterReset CtQuery = iota
+)
+
+// NetlinkGroup represents a Netlink multicast group
+type NetlinkGroup uint32
+
+// Supported Netlink groups
+const (
+	NetlinkCtNew             NetlinkGroup = 1 << iota
+	NetlinkCtUpdate          NetlinkGroup = 1 << iota
+	NetlinkCtDestroy         NetlinkGroup = 1 << iota
+	NetlinkCtExpectedNew     NetlinkGroup = 1 << iota
+	NetlinkCtExpectedUpdate  NetlinkGroup = 1 << iota
+	NetlinkCtExpectedDestroy NetlinkGroup = 1 << iota
 )
 
 // CtFamily specifies the network family
@@ -175,6 +189,47 @@ func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]*Conn, error) {
 	}
 
 	return conn, nil
+}
+
+// Register your function to a Netlinkgroup and receive the messages
+func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c *Conn)) (<-chan error, error) {
+	if err := nfct.con.JoinGroup(uint32(group)); err != nil {
+		return nil, err
+	}
+	ctrl := make(chan error)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				close(ctrl)
+				return
+			default:
+			}
+			reply, err := nfct.con.Receive()
+			if err != nil {
+				ctrl <- err
+				return
+			}
+
+			for _, msg := range reply {
+				c, err := parseConnectionMsg(msg.Data[4:])
+				if err != nil {
+					ctrl <- err
+				}
+				fn(c)
+			}
+
+		}
+	}()
+	return ctrl, nil
+}
+
+// Unregister from a Netlink group
+func (nfct *Nfct) Unregister(group NetlinkGroup) error {
+	if err := nfct.con.LeaveGroup(uint32(group)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ErrMsg as defined in nlmsgerr
