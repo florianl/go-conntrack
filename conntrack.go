@@ -18,6 +18,7 @@ type Nfct struct {
 
 // Conn contains all the information of a connection
 type Conn struct {
+	attr []ConnAttr
 }
 
 // CtType specifies the subsystem of conntrack
@@ -139,7 +140,7 @@ func (nfct *Nfct) Dump(f CtFamily) ([]*Conn, error) {
 
 	var conn []*Conn
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg.Data[4:])
+		c, err := parseConnectionMsg(msg)
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +182,7 @@ func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]*Conn, error) {
 
 	var conn []*Conn
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg.Data[4:])
+		c, err := parseConnectionMsg(msg)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +213,7 @@ func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c *C
 			}
 
 			for _, msg := range reply {
-				c, err := parseConnectionMsg(msg.Data[4:])
+				c, err := parseConnectionMsg(msg)
 				if err != nil {
 					ctrl <- err
 				}
@@ -281,6 +282,10 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 	return append([]byte{familiy, version}, buf...)
 }
 
-func parseConnectionMsg(b []byte) (*Conn, error) {
-	return nil, fmt.Errorf("Not implemented yet")
+func parseConnectionMsg(msg netlink.Message) (*Conn, error) {
+	conn, err := extractAttributes(msg.Data)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
