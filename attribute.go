@@ -187,108 +187,97 @@ func checkHeader(data []byte) int {
 	return 0
 }
 
-func extractTCPTuple(data []byte) ([]ConnAttr, error) {
-	var connAttr []ConnAttr
+func extractTCPTuple(conn Conn, data []byte) error {
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0XFF {
 		case ctaProtoinfoTCPState:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTCPState, Data: attr.Data})
+			conn[AttrTCPState] = attr.Data
 		case ctaProtoinfoTCPWScaleOrig:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTCPWScaleOrig, Data: attr.Data})
+			conn[AttrTCPWScaleOrig] = attr.Data
 		case ctaProtoinfoTCPWScaleRepl:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTCPWScaleRepl, Data: attr.Data})
+			conn[AttrTCPWScaleRepl] = attr.Data
 		case ctaProtoinfoTCPFlagsOrig:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTCPFlagsOrig, Data: attr.Data})
+			conn[AttrTCPFlagsOrig] = attr.Data
 		case ctaProtoinfoTCPFlagsRepl:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTCPFlagsRepl, Data: attr.Data})
+			conn[AttrTCPFlagsRepl] = attr.Data
 		}
 	}
-	return connAttr, nil
+	return nil
 }
 
-func extractProtocolTuple(dir int, data []byte) ([]ConnAttr, int, error) {
-	var connAttr []ConnAttr
+func extractProtocolTuple(conn Conn, dir int, data []byte) (int, error) {
 	var protocol int
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return nil, protocol, err
+		return protocol, err
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0XFF {
 		case ctaProtoNum:
 			protocol = int(attr.Data[0])
 			if dir == -1 {
-				connAttr = append(connAttr, ConnAttr{Type: AttrOrigL4Proto, Data: attr.Data})
-
+				conn[AttrOrigL4Proto] = attr.Data
 			} else {
-				connAttr = append(connAttr, ConnAttr{Type: AttrReplL4Proto, Data: attr.Data})
-
+				conn[AttrReplL4Proto] = attr.Data
 			}
 		case ctaProtoSrcPort:
-			connAttr = append(connAttr, ConnAttr{Type: ConnAttrType(ctaProtoSrcPort + dir + 8), Data: attr.Data})
+			conn[ConnAttrType(ctaProtoSrcPort+dir+8)] = attr.Data
 		case ctaProtoDstPort:
-			connAttr = append(connAttr, ConnAttr{Type: ConnAttrType(ctaProtoDstPort + dir + 8), Data: attr.Data})
+			conn[ConnAttrType(ctaProtoDstPort+dir+8)] = attr.Data
 		case ctaProtoIcmpID:
-			connAttr = append(connAttr, ConnAttr{Type: AttrIcmpID, Data: attr.Data})
+			conn[AttrIcmpID] = attr.Data
 		case ctaProtoIcmpType:
-			connAttr = append(connAttr, ConnAttr{Type: AttrIcmpType, Data: attr.Data})
+			conn[AttrIcmpType] = attr.Data
 		case ctaProtoIcmpCode:
-			connAttr = append(connAttr, ConnAttr{Type: AttrIcmpCode, Data: attr.Data})
+			conn[AttrIcmpCode] = attr.Data
 		case ctaProtoIcmpv6ID:
-			connAttr = append(connAttr, ConnAttr{Type: AttrIcmpID, Data: attr.Data})
+			conn[AttrIcmpID] = attr.Data
 		case ctaProtoIcmpv6Type:
-			connAttr = append(connAttr, ConnAttr{Type: AttrIcmpType, Data: attr.Data})
+			conn[AttrIcmpCode] = attr.Data
 		case ctaProtoIcmpv6Code:
-			connAttr = append(connAttr, ConnAttr{Type: AttrIcmpCode, Data: attr.Data})
-		default:
-			return nil, protocol, fmt.Errorf("Unexpected Protocol Tuple Attribute: %d", attr.Type&0xFF)
+			conn[AttrIcmpCode] = attr.Data
 		}
 	}
-	return connAttr, protocol, nil
+	return protocol, nil
 }
 
-func extractIPTuple(dir int, data []byte) ([]ConnAttr, int, error) {
-	var connAttr []ConnAttr
+func extractIPTuple(conn Conn, dir int, data []byte) (int, error) {
 	var protocol int
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return nil, protocol, err
+		return protocol, err
 	}
 	for _, attr := range attributes {
 		if attr.Type&nlafNested == nlafNested {
-			tuple, proto, err := extractProtocolTuple(dir, attr.Data)
+			proto, err := extractProtocolTuple(conn, dir, attr.Data)
 			if err != nil {
-				return nil, protocol, err
+				return protocol, err
 			}
 			protocol = proto
-			connAttr = append(connAttr, tuple...)
 			continue
 		}
 		switch attr.Type & 0XFF {
 		case ctaIPv4Src:
-			connAttr = append(connAttr, ConnAttr{Type: ConnAttrType(ctaIPv4Src + dir), Data: attr.Data})
+			conn[ConnAttrType(ctaIPv4Src+dir)] = attr.Data
 		case ctaIPv4Dst:
-			connAttr = append(connAttr, ConnAttr{Type: ConnAttrType(ctaIPv4Dst + dir), Data: attr.Data})
+			conn[ConnAttrType(ctaIPv4Dst+dir)] = attr.Data
 		case ctaIPv6Src:
-			connAttr = append(connAttr, ConnAttr{Type: ConnAttrType(ctaIPv6Src + dir + 2), Data: attr.Data})
+			conn[ConnAttrType(ctaIPv6Src+dir+2)] = attr.Data
 		case ctaIPv6Dst:
-			connAttr = append(connAttr, ConnAttr{Type: ConnAttrType(ctaIPv6Dst + dir + 2), Data: attr.Data})
-		default:
-			return nil, protocol, fmt.Errorf("Unexpected IP Tuple Attribute: %d", attr.Type&0xFF)
+			conn[ConnAttrType(ctaIPv6Dst+dir+2)] = attr.Data
 		}
 	}
-	return connAttr, protocol, nil
+	return protocol, nil
 }
 
-func extractCounterTuple(dir int, data []byte) ([]ConnAttr, error) {
-	var connAttr []ConnAttr
+func extractCounterTuple(conn Conn, dir int, data []byte) error {
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0XFF {
@@ -296,117 +285,108 @@ func extractCounterTuple(dir int, data []byte) ([]ConnAttr, error) {
 			fallthrough
 		case ctaCounterPackets:
 			if dir == -1 {
-				connAttr = append(connAttr, ConnAttr{Type: AttrOrigCounterPackets, Data: attr.Data})
+				conn[AttrOrigCounterPackets] = attr.Data
 			} else {
-				connAttr = append(connAttr, ConnAttr{Type: AttrReplCounterPackets, Data: attr.Data})
+				conn[AttrReplCounterPackets] = attr.Data
 			}
 		case ctaCounter32Bytes:
 			fallthrough
 		case ctaCounterBytes:
 			if dir == -1 {
-				connAttr = append(connAttr, ConnAttr{Type: AttrOrigCounterBytes, Data: attr.Data})
+				conn[AttrOrigCounterBytes] = attr.Data
 			} else {
-				connAttr = append(connAttr, ConnAttr{Type: AttrReplCounterBytes, Data: attr.Data})
+				conn[AttrReplCounterBytes] = attr.Data
 			}
 		}
 	}
-	return connAttr, nil
+	return nil
 }
 
-func extractTimestampTuple(data []byte) ([]ConnAttr, error) {
-	var connAttr []ConnAttr
+func extractTimestampTuple(conn Conn, data []byte) error {
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0XFF {
 		case ctaTimestampStart:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTimestampStart, Data: attr.Data})
+			conn[AttrTimestampStart] = attr.Data
 		case ctaTimestampStop:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTimestampStop, Data: attr.Data})
+			conn[AttrTimestampStop] = attr.Data
 		}
 	}
-	return connAttr, nil
+	return nil
 }
 
-func extractAttribute(data []byte) ([]ConnAttr, error) {
-	var connAttr []ConnAttr
+func extractAttribute(conn Conn, data []byte) error {
 	var protocol int
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	for _, attr := range attributes {
 		switch attr.Type & 0xFF {
 		case ctaTupleOrig:
-			tuple, proto, err := extractIPTuple(-1, attr.Data[4:])
+			proto, err := extractIPTuple(conn, -1, attr.Data[4:])
 			if err != nil {
-				return nil, err
+				return err
 			}
-			connAttr = append(connAttr, tuple...)
 			protocol = proto
 		case ctaTupleReply:
-			tuple, proto, err := extractIPTuple(1, attr.Data[4:])
+			proto, err := extractIPTuple(conn, 1, attr.Data[4:])
 			if err != nil {
-				return nil, err
+				return err
 			}
-			connAttr = append(connAttr, tuple...)
 			protocol = proto
 		case ctaProtoinfo:
 			if protocol == 6 {
-				tuple, err := extractTCPTuple(attr.Data[4:])
+				err := extractTCPTuple(conn, attr.Data[4:])
 				if err != nil {
-					return nil, err
+					return err
 				}
-				connAttr = append(connAttr, tuple...)
 			}
 		case ctaCountersOrig:
-			tuple, err := extractCounterTuple(-1, attr.Data)
+			err := extractCounterTuple(conn, -1, attr.Data)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			connAttr = append(connAttr, tuple...)
 		case ctaCountersReply:
-			tuple, err := extractCounterTuple(1, attr.Data)
+			err := extractCounterTuple(conn, 1, attr.Data)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			connAttr = append(connAttr, tuple...)
 		case ctaTimestamp:
-			tuple, err := extractTimestampTuple(attr.Data)
+			err := extractTimestampTuple(conn, attr.Data)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			connAttr = append(connAttr, tuple...)
 		case ctaTimeout:
-			connAttr = append(connAttr, ConnAttr{Type: AttrTimeout, Data: attr.Data})
+			conn[AttrTimeout] = attr.Data
 		case ctaID:
-			connAttr = append(connAttr, ConnAttr{Type: AttrID, Data: attr.Data})
+			conn[AttrID] = attr.Data
 		case ctaUse:
-			connAttr = append(connAttr, ConnAttr{Type: AttrUse, Data: attr.Data})
+			conn[AttrUse] = attr.Data
 		case ctaStatus:
-			connAttr = append(connAttr, ConnAttr{Type: AttrStatus, Data: attr.Data})
+			conn[AttrStatus] = attr.Data
 		case ctaMark:
-			connAttr = append(connAttr, ConnAttr{Type: AttrMark, Data: attr.Data})
+			conn[AttrMark] = attr.Data
 		case ctaSecCtx:
-			connAttr = append(connAttr, ConnAttr{Type: AttrSecCtx, Data: attr.Data})
+			conn[AttrSecCtx] = attr.Data
 		default:
 			fmt.Println(attr.Type&0xFF, "\t", attr.Length, "\t", attr.Data)
 		}
 	}
-	return connAttr, nil
+	return nil
 }
 
-func extractAttributes(msg []byte) (*Conn, error) {
-	var conn Conn
+func extractAttributes(msg []byte) (Conn, error) {
+	var conn = make(map[ConnAttrType][]byte)
 
 	offset := checkHeader(msg[:2])
-	attr, err := extractAttribute(msg[offset:])
-	if err != nil {
+	if err := extractAttribute(conn, msg[offset:]); err != nil {
 		return nil, err
 	}
-	conn.attr = attr
-	return &conn, nil
+	fmt.Println(conn)
+	return conn, nil
 }

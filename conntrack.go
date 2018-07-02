@@ -17,9 +17,7 @@ type Nfct struct {
 }
 
 // Conn contains all the information of a connection
-type Conn struct {
-	attr []ConnAttr
-}
+type Conn map[ConnAttrType][]byte
 
 // CtType specifies the subsystem of conntrack
 type CtType int
@@ -115,7 +113,7 @@ func (nfct *Nfct) Flush(f CtFamily) error {
 }
 
 // Dump a conntrack subsystem
-func (nfct *Nfct) Dump(f CtFamily) ([]*Conn, error) {
+func (nfct *Nfct) Dump(f CtFamily) ([]Conn, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
@@ -138,7 +136,7 @@ func (nfct *Nfct) Dump(f CtFamily) ([]*Conn, error) {
 		return nil, err
 	}
 
-	var conn []*Conn
+	var conn []Conn
 	for _, msg := range reply {
 		c, err := parseConnectionMsg(msg)
 		if err != nil {
@@ -151,7 +149,7 @@ func (nfct *Nfct) Dump(f CtFamily) ([]*Conn, error) {
 }
 
 // Query conntrack subsystem for a certain attributes
-func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]*Conn, error) {
+func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]Conn, error) {
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return nil, err
@@ -180,7 +178,7 @@ func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]*Conn, error) {
 		return nil, err
 	}
 
-	var conn []*Conn
+	var conn []Conn
 	for _, msg := range reply {
 		c, err := parseConnectionMsg(msg)
 		if err != nil {
@@ -193,7 +191,7 @@ func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]*Conn, error) {
 }
 
 // Register your function to a Netlinkgroup and receive the messages
-func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c *Conn)) (<-chan error, error) {
+func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c Conn)) (<-chan error, error) {
 	if err := nfct.con.JoinGroup(uint32(group)); err != nil {
 		return nil, err
 	}
@@ -282,7 +280,7 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 	return append([]byte{familiy, version}, buf...)
 }
 
-func parseConnectionMsg(msg netlink.Message) (*Conn, error) {
+func parseConnectionMsg(msg netlink.Message) (Conn, error) {
 	conn, err := extractAttributes(msg.Data)
 	if err != nil {
 		return nil, err
