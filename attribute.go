@@ -172,6 +172,17 @@ const (
 	ctaTimestampStop  = 2
 )
 
+const (
+	ctaHelpName = 1
+	ctaHelpInfo = 2
+)
+
+const (
+	ctaSeqAdjCorrPos      = 1
+	ctaSeqAdjOffsetBefore = 2
+	ctaSeqAdjOffsetAfter  = 3
+)
+
 const nlafNested = (1 << 15)
 
 func nestAttributes(filters []ConnAttr) ([]byte, error) {
@@ -376,6 +387,40 @@ func extractTimestampTuple(conn Conn, data []byte) error {
 	return nil
 }
 
+func extractHelpTuple(conn Conn, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type & 0XFF {
+		case ctaHelpName:
+			conn[AttrHelperName] = attr.Data
+		case ctaHelpInfo:
+			conn[AttrHelperInfo] = attr.Data
+		}
+	}
+	return nil
+}
+
+func extractNATSeqTuple(conn Conn, dir int, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type & 0XFF {
+		case ctaSeqAdjCorrPos:
+			conn[ConnAttrType(int(AttrOrigNatSeqCorrectionPos)+dir)] = attr.Data
+		case ctaSeqAdjOffsetBefore:
+			conn[ConnAttrType(int(AttrOrigNatSeqOffsetBefore)+dir)] = attr.Data
+		case ctaSeqAdjOffsetAfter:
+			conn[ConnAttrType(int(AttrOrigNatSeqOffsetAfter)+dir)] = attr.Data
+		}
+	}
+	return nil
+}
+
 func extractAttribute(conn Conn, data []byte) error {
 	var protocol int
 	attributes, err := netlink.UnmarshalAttributes(data)
@@ -398,37 +443,46 @@ func extractAttribute(conn Conn, data []byte) error {
 			}
 			protocol = proto
 		case ctaProtoinfo:
-			if protocol == 6 {
+			if protocol == unix.IPPROTO_TCP {
 				err := extractTCPTuple(conn, attr.Data[4:])
 				if err != nil {
 					return err
 				}
-			} else if protocol == 132 {
+			} else if protocol == unix.IPPROTO_SCTP {
 				err := extractSCTPTuple(conn, attr.Data[4:])
 				if err != nil {
 					return err
 				}
 
-			} else if protocol == 33 {
+			} else if protocol == unix.IPPROTO_DCCP {
 				err := extractDCCPTuple(conn, attr.Data[4:])
 				if err != nil {
 					return err
 				}
 
 			}
+		case ctaSeqAdjOrig:
+			if err := extractNATSeqTuple(conn, 0, attr.Data); err != nil {
+				return err
+			}
+		case ctaSeqAdjRepl:
+			if err := extractNATSeqTuple(conn, 3, attr.Data); err != nil {
+				return err
+			}
 		case ctaCountersOrig:
-			err := extractCounterTuple(conn, -1, attr.Data)
-			if err != nil {
+			if err := extractCounterTuple(conn, -1, attr.Data); err != nil {
 				return err
 			}
 		case ctaCountersReply:
-			err := extractCounterTuple(conn, 1, attr.Data)
-			if err != nil {
+			if err := extractCounterTuple(conn, 1, attr.Data); err != nil {
 				return err
 			}
 		case ctaTimestamp:
-			err := extractTimestampTuple(conn, attr.Data)
-			if err != nil {
+			if err := extractTimestampTuple(conn, attr.Data); err != nil {
+				return err
+			}
+		case ctaHelp:
+			if err := extractHelpTuple(conn, attr.Data); err != nil {
 				return err
 			}
 		case ctaTimeout:
@@ -443,6 +497,18 @@ func extractAttribute(conn Conn, data []byte) error {
 			conn[AttrMark] = attr.Data
 		case ctaSecCtx:
 			conn[AttrSecCtx] = attr.Data
+		case ctaLables:
+			conn[AttrConnlabels] = attr.Data
+		case ctaLablesMask:
+			conn[AttrConnlabelsMask] = attr.Data
+		case ctaSecmark:
+			conn[AttrSecmark] = attr.Data
+		case ctaZone:
+			conn[AttrZone] = attr.Data
+		case ctaNatDst:
+			/* deprecated	*/
+		case ctaNatSrc:
+			/* deprecated	*/
 		default:
 			fmt.Println(attr.Type&0xFF, "\t", attr.Length, "\t", attr.Data)
 		}
