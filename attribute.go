@@ -149,6 +149,18 @@ const (
 )
 
 const (
+	ctaProtoinfoDCCPState        = 1
+	ctaProtoinfoDCCPRole         = 2
+	ctaProtoinfoDCCPHandshakeSeq = 3
+)
+
+const (
+	ctaProtoInfoSCTPState        = 1
+	ctaProtoInfoSCTPVTagOriginal = 2
+	ctaProtoInfoSCTPVTagReply    = 3
+)
+
+const (
 	ctaCounterPackets   = 1
 	ctaCounterBytes     = 2
 	ctaCounter32Packets = 3
@@ -209,6 +221,42 @@ func extractTCPTuple(conn Conn, data []byte) error {
 	return nil
 }
 
+func extractDCCPTuple(conn Conn, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type & 0XFF {
+		case ctaProtoinfoDCCPState:
+			conn[AttrDccpState] = attr.Data
+		case ctaProtoinfoDCCPRole:
+			conn[AttrDccpRole] = attr.Data
+		case ctaProtoinfoDCCPHandshakeSeq:
+			conn[AttrDccpHandshakeSeq] = attr.Data
+		}
+	}
+	return nil
+}
+
+func extractSCTPTuple(conn Conn, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type & 0XFF {
+		case ctaProtoInfoSCTPState:
+			conn[AttrSctpState] = attr.Data
+		case ctaProtoInfoSCTPVTagOriginal:
+			conn[AttrSctpVtagOrig] = attr.Data
+		case ctaProtoInfoSCTPVTagReply:
+			conn[AttrSctpVtagRepl] = attr.Data
+		}
+	}
+	return nil
+}
+
 func extractProtocolTuple(conn Conn, dir int, data []byte) (int, error) {
 	var protocol int
 	attributes, err := netlink.UnmarshalAttributes(data)
@@ -263,9 +311,19 @@ func extractIPTuple(conn Conn, dir int, data []byte) (int, error) {
 		switch attr.Type & 0XFF {
 		case ctaIPv4Src:
 			conn[ConnAttrType(ctaIPv4Src+dir)] = attr.Data
+			if dir == -1 {
+				conn[AttrOrigL3Proto] = []byte{byte(unix.AF_INET)}
+			} else {
+				conn[AttrReplL3Proto] = []byte{byte(unix.AF_INET)}
+			}
 		case ctaIPv4Dst:
 			conn[ConnAttrType(ctaIPv4Dst+dir)] = attr.Data
 		case ctaIPv6Src:
+			if dir == -1 {
+				conn[AttrOrigL3Proto] = []byte{byte(unix.AF_INET6)}
+			} else {
+				conn[AttrReplL3Proto] = []byte{byte(unix.AF_INET6)}
+			}
 			conn[ConnAttrType(ctaIPv6Src+dir+2)] = attr.Data
 		case ctaIPv6Dst:
 			conn[ConnAttrType(ctaIPv6Dst+dir+2)] = attr.Data
@@ -345,6 +403,18 @@ func extractAttribute(conn Conn, data []byte) error {
 				if err != nil {
 					return err
 				}
+			} else if protocol == 132 {
+				err := extractSCTPTuple(conn, attr.Data[4:])
+				if err != nil {
+					return err
+				}
+
+			} else if protocol == 33 {
+				err := extractDCCPTuple(conn, attr.Data[4:])
+				if err != nil {
+					return err
+				}
+
 			}
 		case ctaCountersOrig:
 			err := extractCounterTuple(conn, -1, attr.Data)
@@ -387,6 +457,5 @@ func extractAttributes(msg []byte) (Conn, error) {
 	if err := extractAttribute(conn, msg[offset:]); err != nil {
 		return nil, err
 	}
-	fmt.Println(conn)
 	return conn, nil
 }
