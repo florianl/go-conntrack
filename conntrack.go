@@ -122,30 +122,45 @@ func (nfct *Nfct) Dump(f CtFamily) ([]Conn, error) {
 		},
 		Data: data,
 	}
+	return nfct.query(req)
+}
 
-	verify, err := nfct.con.Send(req)
+// Create a new entrie in the conntrack subsystem with certain attributes
+func (nfct *Nfct) Create(f CtFamily, filters []ConnAttr) error {
+	query, err := nestAttributes(filters)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := netlink.Validate(req, []netlink.Message{verify}); err != nil {
-		return nil, err
-	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
 
-	reply, err := nfct.con.Receive()
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtNew),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsCreate | netlink.HeaderFlagsExcl,
+		},
+		Data: data,
+	}
+	return nfct.execute(req)
+}
+
+// Delete elements from the conntrack subsystem with certain attributes
+func (nfct *Nfct) Delete(f CtFamily, filters []ConnAttr) error {
+	query, err := nestAttributes(filters)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
 
-	var conn []Conn
-	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg)
-		if err != nil {
-			return nil, err
-		}
-		conn = append(conn, c)
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtDelete),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+		},
+		Data: data,
 	}
-
-	return conn, nil
+	return nfct.execute(req)
 }
 
 // Query conntrack subsystem for a certain attributes
@@ -164,30 +179,7 @@ func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]Conn, error) {
 		},
 		Data: data,
 	}
-	verify, err := nfct.con.Send(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := netlink.Validate(req, []netlink.Message{verify}); err != nil {
-		return nil, err
-	}
-
-	reply, err := nfct.con.Receive()
-	if err != nil {
-		return nil, err
-	}
-
-	var conn []Conn
-	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg)
-		if err != nil {
-			return nil, err
-		}
-		conn = append(conn, c)
-	}
-
-	return conn, nil
+	return nfct.query(req)
 }
 
 // Register your function to a Netlinkgroup and receive the messages
@@ -272,6 +264,33 @@ func (nfct *Nfct) execute(req netlink.Message) error {
 		}
 	}
 	return nil
+}
+
+func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
+	verify, err := nfct.con.Send(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := netlink.Validate(req, []netlink.Message{verify}); err != nil {
+		return nil, err
+	}
+
+	reply, err := nfct.con.Receive()
+	if err != nil {
+		return nil, err
+	}
+
+	var conn []Conn
+	for _, msg := range reply {
+		c, err := parseConnectionMsg(msg)
+		if err != nil {
+			return nil, err
+		}
+		conn = append(conn, c)
+	}
+
+	return conn, nil
 }
 
 func putExtraHeader(familiy, version uint8, resid uint16) []byte {
