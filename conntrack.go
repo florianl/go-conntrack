@@ -19,14 +19,19 @@ type Nfct struct {
 // Conn contains all the information of a connection
 type Conn map[ConnAttrType][]byte
 
-// CtType specifies the subsystem of conntrack
-type CtType int
+// CtTable specifies the subsystem of conntrack
+type CtTable int
 
 // Supported conntrack subsystems
 const (
-	Ct         CtType = unix.NFNL_SUBSYS_CTNETLINK
-	CtExpected CtType = unix.NFNL_SUBSYS_CTNETLINK_EXP
-	CtTimeout  CtType = unix.NFNL_SUBSYS_CTNETLINK_TIMEOUT
+	// Conntrack table
+	Ct CtTable = unix.NFNL_SUBSYS_CTNETLINK
+
+	// Conntrack expect table
+	CtExpected CtTable = unix.NFNL_SUBSYS_CTNETLINK_EXP
+
+	// Conntrack timeout table
+	CtTimeout CtTable = unix.NFNL_SUBSYS_CTNETLINK_TIMEOUT
 )
 
 const (
@@ -100,11 +105,11 @@ func (nfct *Nfct) Close() error {
 }
 
 // Flush a conntrack subsystem
-func (nfct *Nfct) Flush(f CtFamily) error {
+func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtDelete),
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtDelete),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
@@ -113,11 +118,11 @@ func (nfct *Nfct) Flush(f CtFamily) error {
 }
 
 // Dump a conntrack subsystem
-func (nfct *Nfct) Dump(f CtFamily) ([]Conn, error) {
+func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGet),
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
 		},
 		Data: data,
@@ -126,7 +131,7 @@ func (nfct *Nfct) Dump(f CtFamily) ([]Conn, error) {
 }
 
 // Create a new entrie in the conntrack subsystem with certain attributes
-func (nfct *Nfct) Create(f CtFamily, filters []ConnAttr) error {
+func (nfct *Nfct) Create(t CtTable, f CtFamily, filters []ConnAttr) error {
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return err
@@ -136,7 +141,7 @@ func (nfct *Nfct) Create(f CtFamily, filters []ConnAttr) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtNew),
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsCreate | netlink.HeaderFlagsExcl,
 		},
 		Data: data,
@@ -145,7 +150,7 @@ func (nfct *Nfct) Create(f CtFamily, filters []ConnAttr) error {
 }
 
 // Delete elements from the conntrack subsystem with certain attributes
-func (nfct *Nfct) Delete(f CtFamily, filters []ConnAttr) error {
+func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return err
@@ -155,7 +160,7 @@ func (nfct *Nfct) Delete(f CtFamily, filters []ConnAttr) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtDelete),
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtDelete),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
@@ -164,7 +169,7 @@ func (nfct *Nfct) Delete(f CtFamily, filters []ConnAttr) error {
 }
 
 // Query conntrack subsystem for a certain attributes
-func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]Conn, error) {
+func (nfct *Nfct) Query(t CtTable, f CtFamily, filters []ConnAttr) ([]Conn, error) {
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return nil, err
@@ -174,7 +179,7 @@ func (nfct *Nfct) Query(f CtFamily, filters []ConnAttr) ([]Conn, error) {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGet),
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
 		},
 		Data: data,
