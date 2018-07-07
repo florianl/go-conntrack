@@ -185,24 +185,6 @@ const (
 
 const nlafNested = (1 << 15)
 
-func nestAttributes(filters []ConnAttr) ([]byte, error) {
-	var attrs []netlink.Attribute
-
-	for _, filter := range filters {
-		switch filter.Type {
-		case AttrMark:
-			if len(filter.Data) != 4 {
-				return nil, fmt.Errorf("Length of data for type %d has to be 4", filter.Type)
-			}
-			attrs = append(attrs, netlink.Attribute{Type: ctaMark, Data: filter.Data})
-		default:
-			return nil, fmt.Errorf("Type %d not yet implemented", filter.Type)
-		}
-	}
-
-	return netlink.MarshalAttributes(attrs)
-}
-
 func checkHeader(data []byte) int {
 	if (data[0] == unix.AF_INET || data[0] == unix.AF_INET6) && data[1] == unix.NFNETLINK_V0 {
 		return 4
@@ -459,7 +441,6 @@ func extractAttribute(conn Conn, data []byte) error {
 				if err != nil {
 					return err
 				}
-
 			}
 		case ctaSeqAdjOrig:
 			if err := extractNATSeqTuple(conn, 0, attr.Data); err != nil {
