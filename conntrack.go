@@ -86,7 +86,7 @@ const (
 	CtIPv4 CtFamily = unix.AF_INET
 )
 
-// Open a connection to the given conntrack subsystem
+// Open a connection to the conntrack subsystem
 func Open() (*Nfct, error) {
 	var nfct Nfct
 
@@ -168,7 +168,7 @@ func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 	return nfct.execute(req)
 }
 
-// Query conntrack subsystem for a certain attributes
+// Query conntrack subsystem with certain attributes
 func (nfct *Nfct) Query(t CtTable, f CtFamily, filters []ConnAttr) ([]Conn, error) {
 	query, err := nestAttributes(filters)
 	if err != nil {
