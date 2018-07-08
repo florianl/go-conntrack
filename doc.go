@@ -19,8 +19,8 @@ Example:
 		defer nfct.Close()
 
 		// Get all IPv4 sessions
-		s, _ := nfct.Dump(ct.Ct, ct.CtIPv4)
-		for _, x := range a {
+		sessions, _ := nfct.Dump(ct.Ct, ct.CtIPv4)
+		for _, x := range sessions {
 			srcIP := net.IP(x[ct.AttrOrigIPv4Src])
 			dstIP := net.IP(x[ct.AttrOrigIPv4Dst])
 			// Print source and destination for each IPv4 session
