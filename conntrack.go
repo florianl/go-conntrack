@@ -35,33 +35,9 @@ const (
 )
 
 const (
-	ipctnlMsgCtNew            = iota
-	ipctnlMsgCtGet            = iota
-	ipctnlMsgCtDelete         = iota
-	ipctnlMsgCtGetCtrZero     = iota
-	ipctnlMsgCtGetStatsCPU    = iota
-	ipctnlMsgCtGetStats       = iota
-	ipctnlMsgCtGetDying       = iota
-	ipctnlMsgCtGetUnconfirmed = iota
-
-	ipctnlMsgMax = iota
-)
-
-// CtQuery specifies the type of the query
-type CtQuery int
-
-// Supported query types
-const (
-	CtQCreate          CtQuery = iota
-	CtQUpdate          CtQuery = iota
-	CtQDestroy         CtQuery = iota
-	CtQGet             CtQuery = iota
-	CtQFlush           CtQuery = iota
-	CtQDump            CtQuery = iota
-	CtQDumpReset       CtQuery = iota
-	CtQCreateUpdate    CtQuery = iota
-	CtQDumpFilter      CtQuery = iota
-	CtQDumpFilterReset CtQuery = iota
+	ipctnlMsgCtNew    = iota
+	ipctnlMsgCtGet    = iota
+	ipctnlMsgCtDelete = iota
 )
 
 // NetlinkGroup represents a Netlink multicast group
