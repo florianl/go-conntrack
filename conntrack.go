@@ -145,8 +145,8 @@ func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 }
 
 // Query conntrack subsystem with certain attributes
-func (nfct *Nfct) Query(t CtTable, f CtFamily, filters []ConnAttr) ([]Conn, error) {
-	query, err := nestAttributes(filters)
+func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error) {
+	query, err := nestFilter(filter)
 	if err != nil {
 		return nil, err
 	}
