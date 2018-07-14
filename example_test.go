@@ -64,3 +64,25 @@ func ExampleNfct_Create() {
 		return
 	}
 }
+
+func ExampleNfct_Query() {
+	nfct, err := ct.Open()
+	if err != nil {
+		fmt.Println("Could not create nfct:", err)
+		return
+	}
+	defer nfct.Close()
+	sessions, err := nfct.Query(ct.Ct, ct.CtIPv6,
+		ct.FilterAttr{Mark: []byte{0x00, 0x0, 0x00, 0x01},
+			MarkMask: []byte{0x00, 0x0, 0x0, 0xFF}})
+	if err != nil {
+		fmt.Println("Could not create new session:", err)
+		return
+	}
+	for _, x := range sessions {
+		osrcIP := net.IP(x[ct.AttrOrigIPv6Src])
+		odstIP := net.IP(x[ct.AttrOrigIPv6Dst])
+		fmt.Printf("src: %s\tdst: %s \n", osrcIP, odstIP)
+
+	}
+}
