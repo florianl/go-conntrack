@@ -91,7 +91,6 @@ const (
 	AttrReplzone                ConnAttrType = iota /* u16 bits */
 	AttrSNatIPv6                ConnAttrType = iota /* u128 bits */
 	AttrDNatIPv6                ConnAttrType = iota /* u128 bits */
-	AttrMax                     ConnAttrType = iota
 )
 
 const (
