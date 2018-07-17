@@ -11,6 +11,9 @@ var ErrNotLinux = errors.New("package requires the netfilter subsystem of the li
 type Nfct struct {
 }
 
+// ConnAttrType specifies the attribute of a connection
+type ConnAttrType uint16
+
 // Conn contains all the information of a connection
 type Conn map[ConnAttrType][]byte
 
