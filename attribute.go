@@ -123,6 +123,12 @@ const (
 )
 
 const (
+	ctaTupleIP    = 1
+	ctaTupleProto = 2
+	ctaTupleZone  = 3
+)
+
+const (
 	ctaIPv4Src = 1
 	ctaIPv4Dst = 2
 	ctaIPv6Src = 3
@@ -139,6 +145,12 @@ const (
 	ctaProtoIcmpv6ID   = 7
 	ctaProtoIcmpv6Type = 8
 	ctaProtoIcmpv6Code = 9
+)
+
+const (
+	ctaProtoinfoTCP  = 1
+	ctaProtoinfoDCCP = 2
+	ctaProtoinfoSCTP = 3
 )
 
 const (
@@ -251,16 +263,38 @@ func extractSCTPTuple(conn Conn, data []byte) error {
 	return nil
 }
 
-func extractProtocolTuple(conn Conn, dir int, data []byte) (int, error) {
-	var protocol int
+func extractProtoinfo(conn Conn, data []byte) error {
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return protocol, err
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type & 0XFF {
+		case ctaProtoinfoTCP:
+			if err := extractTCPTuple(conn, attr.Data); err != nil {
+				return err
+			}
+		case ctaProtoinfoDCCP:
+			if err := extractDCCPTuple(conn, attr.Data); err != nil {
+				return err
+			}
+		case ctaProtoinfoSCTP:
+			if err := extractSCTPTuple(conn, attr.Data); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func extractProtocolTuple(conn Conn, dir int, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0XFF {
 		case ctaProtoNum:
-			protocol = int(attr.Data[0])
 			if dir == -1 {
 				conn[AttrOrigL4Proto] = attr.Data
 			} else {
@@ -284,24 +318,15 @@ func extractProtocolTuple(conn Conn, dir int, data []byte) (int, error) {
 			conn[AttrIcmpCode] = attr.Data
 		}
 	}
-	return protocol, nil
+	return nil
 }
 
-func extractIPTuple(conn Conn, dir int, data []byte) (int, error) {
-	var protocol int
+func extractIPTuple(conn Conn, dir int, data []byte) error {
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
-		return protocol, err
+		return err
 	}
 	for _, attr := range attributes {
-		if attr.Type&nlafNested == nlafNested {
-			proto, err := extractProtocolTuple(conn, dir, attr.Data)
-			if err != nil {
-				return protocol, err
-			}
-			protocol = proto
-			continue
-		}
 		switch attr.Type & 0XFF {
 		case ctaIPv4Src:
 			conn[ConnAttrType(ctaIPv4Src+dir)] = attr.Data
@@ -323,7 +348,30 @@ func extractIPTuple(conn Conn, dir int, data []byte) (int, error) {
 			conn[ConnAttrType(ctaIPv6Dst+dir+2)] = attr.Data
 		}
 	}
-	return protocol, nil
+	return nil
+}
+
+func extractTuple(conn Conn, dir int, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type & 0XFF {
+		case ctaTupleIP:
+			if err := extractIPTuple(conn, dir, attr.Data); err != nil {
+				return err
+			}
+		case ctaTupleProto:
+			if err := extractProtocolTuple(conn, dir, attr.Data); err != nil {
+				return err
+			}
+		case ctaTupleZone:
+			return fmt.Errorf("ctaTupleZone not yet implemented")
+
+		}
+	}
+	return nil
 }
 
 func extractCounterTuple(conn Conn, dir int, data []byte) error {
@@ -405,7 +453,6 @@ func extractNATSeqTuple(conn Conn, dir int, data []byte) error {
 }
 
 func extractAttribute(conn Conn, data []byte) error {
-	var protocol int
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
 		return err
@@ -414,34 +461,16 @@ func extractAttribute(conn Conn, data []byte) error {
 	for _, attr := range attributes {
 		switch attr.Type & 0xFF {
 		case ctaTupleOrig:
-			proto, err := extractIPTuple(conn, -1, attr.Data[4:])
-			if err != nil {
+			if err := extractTuple(conn, -1, attr.Data); err != nil {
 				return err
 			}
-			protocol = proto
 		case ctaTupleReply:
-			proto, err := extractIPTuple(conn, 1, attr.Data[4:])
-			if err != nil {
+			if err := extractTuple(conn, 1, attr.Data); err != nil {
 				return err
 			}
-			protocol = proto
 		case ctaProtoinfo:
-			if protocol == unix.IPPROTO_TCP {
-				err := extractTCPTuple(conn, attr.Data[4:])
-				if err != nil {
-					return err
-				}
-			} else if protocol == unix.IPPROTO_SCTP {
-				err := extractSCTPTuple(conn, attr.Data[4:])
-				if err != nil {
-					return err
-				}
-
-			} else if protocol == unix.IPPROTO_DCCP {
-				err := extractDCCPTuple(conn, attr.Data[4:])
-				if err != nil {
-					return err
-				}
+			if err := extractProtoinfo(conn, attr.Data); err != nil {
+				return err
 			}
 		case ctaSeqAdjOrig:
 			if err := extractNATSeqTuple(conn, 0, attr.Data); err != nil {
