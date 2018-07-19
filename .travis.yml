@@ -5,6 +5,10 @@ go:
     - "1.10"
     - master
 
+os:
+  - linux
+  - osx
+
 sudo: false
 
 script:
