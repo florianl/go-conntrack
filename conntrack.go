@@ -29,9 +29,6 @@ const (
 
 	// Conntrack expect table
 	CtExpected CtTable = unix.NFNL_SUBSYS_CTNETLINK_EXP
-
-	// Conntrack timeout table
-	CtTimeout CtTable = unix.NFNL_SUBSYS_CTNETLINK_TIMEOUT
 )
 
 const (
