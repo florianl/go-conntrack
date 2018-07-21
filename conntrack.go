@@ -104,8 +104,8 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 }
 
 // Create a new entrie in the conntrack subsystem with certain attributes
-func (nfct *Nfct) Create(t CtTable, f CtFamily, filters []ConnAttr) error {
-	query, err := nestAttributes(filters)
+func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
+	query, err := nestAttributes(attributes)
 	if err != nil {
 		return err
 	}
