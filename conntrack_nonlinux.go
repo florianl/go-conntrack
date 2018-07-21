@@ -11,11 +11,22 @@ var ErrNotLinux = errors.New("package requires the netfilter subsystem of the li
 type Nfct struct {
 }
 
+// CtTable specifies the subsystem of conntrack
+type CtTable int
+
+// ConnAttr represents the type and value of a attribute of a connection
+type ConnAttr struct {
+}
+
 // ConnAttrType specifies the attribute of a connection
 type ConnAttrType uint16
 
 // Conn contains all the information of a connection
 type Conn map[ConnAttrType][]byte
+
+// FilterAttr represents a very basic filter
+type FilterAttr struct {
+}
 
 // CtFamily specifies the network family
 type CtFamily uint8
@@ -37,5 +48,15 @@ func (nfct *Nfct) Dump(f CtFamily) ([]Conn, error) {
 
 // Flush returns an error, as this package highly depends on the netfilter subsystem of the linux kernel
 func (nfct *Nfct) Flush(f CtFamily) error {
+	return ErrNotLinux
+}
+
+// Create returns an error, as this package highly depends on the netfilter subsystem of the linux kernel
+func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
+	return ErrNotLinux
+}
+
+// Query returns an error, as this package highly depends on the netfilter subsystem of the linux kernel
+func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) error {
 	return ErrNotLinux
 }
