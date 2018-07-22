@@ -167,10 +167,17 @@ func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c Co
 	}
 	ctrl := make(chan error)
 	go func() {
+		defer func() {
+			if err := nfct.con.LeaveGroup(uint32(group)); err != nil {
+				ctrl <- err
+			}
+			close(ctrl)
+
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
-				close(ctrl)
 				return
 			default:
 			}
