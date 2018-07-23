@@ -160,8 +160,9 @@ func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error
 	return nfct.query(req)
 }
 
-// Register your function to a Netlinkgroup and receive the messages
-func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c Conn)) (<-chan error, error) {
+// Register your function to receive events from a Netlinkgroup.
+// If your function returns something different than 0, it will stop.
+func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c Conn) int) (<-chan error, error) {
 	if err := nfct.con.JoinGroup(uint32(group)); err != nil {
 		return nil, err
 	}
@@ -192,20 +193,14 @@ func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c Co
 				if err != nil {
 					ctrl <- err
 				}
-				fn(c)
+				if ret := fn(c); ret != 0 {
+					return
+				}
 			}
 
 		}
 	}()
 	return ctrl, nil
-}
-
-// Unregister from a Netlink group
-func (nfct *Nfct) Unregister(group NetlinkGroup) error {
-	if err := nfct.con.LeaveGroup(uint32(group)); err != nil {
-		return err
-	}
-	return nil
 }
 
 // ErrMsg as defined in nlmsgerr
