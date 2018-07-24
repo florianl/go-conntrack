@@ -250,6 +250,13 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 		if err != nil {
 			return nil, err
 		}
+		if len(c) == 0 {
+			errMsg, err := unmarschalErrMsg(msg.Data)
+			if err != nil {
+				return nil, err
+			}
+			return nil, fmt.Errorf("%#v", errMsg)
+		}
 		conn = append(conn, c)
 	}
 
