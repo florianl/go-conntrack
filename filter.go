@@ -8,11 +8,6 @@ import (
 	"github.com/mdlayher/netlink"
 )
 
-// FilterAttr represents a very basic filter
-type FilterAttr struct {
-	Mark, MarkMask []byte
-}
-
 // Error which may occour when processing the filter attribute
 var (
 	ErrFilterAttrLength = errors.New("Incorrect length of filter attribute")

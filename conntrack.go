@@ -11,17 +11,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Nfct represents a conntrack handler
-type Nfct struct {
-	con *netlink.Conn
-}
-
-// Conn contains all the information of a connection
-type Conn map[ConnAttrType][]byte
-
-// CtTable specifies the subsystem of conntrack
-type CtTable int
-
 // Supported conntrack subsystems
 const (
 	// Conntrack table
@@ -35,28 +24,6 @@ const (
 	ipctnlMsgCtNew    = iota
 	ipctnlMsgCtGet    = iota
 	ipctnlMsgCtDelete = iota
-)
-
-// NetlinkGroup represents a Netlink multicast group
-type NetlinkGroup uint32
-
-// Supported Netlink groups
-const (
-	NetlinkCtNew             NetlinkGroup = 1 << iota
-	NetlinkCtUpdate          NetlinkGroup = 1 << iota
-	NetlinkCtDestroy         NetlinkGroup = 1 << iota
-	NetlinkCtExpectedNew     NetlinkGroup = 1 << iota
-	NetlinkCtExpectedUpdate  NetlinkGroup = 1 << iota
-	NetlinkCtExpectedDestroy NetlinkGroup = 1 << iota
-)
-
-// CtFamily specifies the network family
-type CtFamily uint8
-
-// Supported family types
-const (
-	CtIPv6 CtFamily = unix.AF_INET6
-	CtIPv4 CtFamily = unix.AF_INET
 )
 
 // Open a connection to the conntrack subsystem
@@ -162,13 +129,29 @@ func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error
 
 // Register your function to receive events from a Netlinkgroup.
 // If your function returns something different than 0, it will stop.
-func (nfct *Nfct) Register(ctx context.Context, group NetlinkGroup, fn func(c Conn) int) (<-chan error, error) {
+func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, fn func(c Conn) int) (<-chan error, error) {
+	return nfct.register(ctx, t, group, []ConnAttr{}, fn)
+}
+
+// RegisterFiltered registers your function to receive events from a Netlinkgroup and applies a filter.
+// If your function returns something different than 0, it will stop.
+func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
+	return nfct.register(ctx, t, group, filter, fn)
+}
+
+func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
 	if err := nfct.con.JoinGroup(uint32(group)); err != nil {
+		return nil, err
+	}
+	if err := nfct.attachFilter(t, filter); err != nil {
 		return nil, err
 	}
 	ctrl := make(chan error)
 	go func() {
 		defer func() {
+			if err := nfct.removeFilter(); err != nil {
+				ctrl <- err
+			}
 			if err := nfct.con.LeaveGroup(uint32(group)); err != nil {
 				ctrl <- err
 			}

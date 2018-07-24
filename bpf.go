@@ -51,48 +51,78 @@ const (
 
 type filterCheckStruct struct {
 	ct, len int
+	nest    []uint32
 }
 
 var filterCheck = map[ConnAttrType]filterCheckStruct{
-	AttrID:     {ct: ctaID, len: 4},
-	AttrUse:    {ct: ctaUse, len: 4},
-	AttrStatus: {ct: ctaStatus, len: 4},
+	AttrID:          {ct: ctaID, len: 4},
+	AttrUse:         {ct: ctaUse, len: 4},
+	AttrStatus:      {ct: ctaStatus, len: 4},
+	AttrOrigL4Proto: {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrReplL4Proto: {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleReply, ctaTupleProto}},
+}
+
+func encodeValue(data []byte) (val uint32) {
+	switch len(data) {
+	case 1:
+		val = uint32(data[0])
+	case 2:
+		val = binary.BigEndian.Uint32(data)
+	case 4:
+		val = binary.BigEndian.Uint32(data)
+	}
+	return
 }
 
 func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
+	nested := len(filterCheck[filter.Type].nest)
 
 	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 14
 	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 14}
 	raw = append(raw, tmp)
 
-	// find attribute type
+	if nested != 0 {
+		for i, nest := range filterCheck[filter.Type].nest {
+			// find nest attribute
+			tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(nest)}
+			raw = append(raw, tmp)
+			tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
+			raw = append(raw, tmp)
+
+			// jump, if nest not found
+			failed := 8 + (nested-i-1)*4
+			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: uint8(failed)}
+			raw = append(raw, tmp)
+
+			tmp = bpf.RawInstruction{Op: bpfALU | bpfADD | bpfK, K: 4}
+			raw = append(raw, tmp)
+		}
+	}
+
+	// find final attribute
 	tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(filterCheck[filter.Type].ct)}
 	raw = append(raw, tmp)
 	tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
 	raw = append(raw, tmp)
 
-	// if A == 0, skip next two
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: 2}
+	// attribute not found
+	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: 4}
 	raw = append(raw, tmp)
 
 	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
 	raw = append(raw, tmp)
 
-	tmp = bpf.RawInstruction{Op: bpfLD | bpfIND | bpfW, K: 4}
+	tmp = bpf.RawInstruction{Op: bpfLD | bpfIND | bpfB, K: 4}
 	raw = append(raw, tmp)
 
-	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
+	// compare expected and actual value
+	val := encodeValue(filter.Data)
+	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 1}
 	raw = append(raw, tmp)
 
-	val := binary.BigEndian.Uint32(filter.Data)
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 2}
-	raw = append(raw, tmp)
-
-	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
-	raw = append(raw, tmp)
-
-	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: 0}
+	// reject
+	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject}
 	raw = append(raw, tmp)
 
 	return raw
@@ -110,12 +140,12 @@ func filterSubsys(subsys uint32) []bpf.RawInstruction {
 	tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfIND, K: 1}
 	raw = append(raw, tmp)
 
-	// A == subsys ? jump + 1 : reject
+	// A == subsys ? jump + 1 : accept
 	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, Jt: 1, K: uint32(subsys)}
 	raw = append(raw, tmp)
 
-	// verdict -> reject
-	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject}
+	// verdict -> accept
+	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictAccept}
 	raw = append(raw, tmp)
 
 	return raw

@@ -76,7 +76,7 @@ func ExampleNfct_Query() {
 		ct.FilterAttr{Mark: []byte{0x00, 0x0, 0x00, 0x01},
 			MarkMask: []byte{0x00, 0x0, 0x0, 0xFF}})
 	if err != nil {
-		fmt.Println("Could not create new session:", err)
+		fmt.Println("Could not query sessions:", err)
 		return
 	}
 	for _, x := range sessions {
