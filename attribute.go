@@ -82,9 +82,9 @@ const (
 )
 
 const (
-	ctaProtoInfoSCTPState        = 1
-	ctaProtoInfoSCTPVTagOriginal = 2
-	ctaProtoInfoSCTPVTagReply    = 3
+	ctaProtoinfoSCTPState        = 1
+	ctaProtoinfoSCTPVTagOriginal = 2
+	ctaProtoinfoSCTPVTagReply    = 3
 )
 
 const (
@@ -166,11 +166,11 @@ func extractSCTPTuple(conn Conn, data []byte) error {
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0XFF {
-		case ctaProtoInfoSCTPState:
+		case ctaProtoinfoSCTPState:
 			conn[AttrSctpState] = attr.Data
-		case ctaProtoInfoSCTPVTagOriginal:
+		case ctaProtoinfoSCTPVTagOriginal:
 			conn[AttrSctpVtagOrig] = attr.Data
-		case ctaProtoInfoSCTPVTagReply:
+		case ctaProtoinfoSCTPVTagReply:
 			conn[AttrSctpVtagRepl] = attr.Data
 		}
 	}

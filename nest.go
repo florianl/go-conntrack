@@ -164,14 +164,14 @@ func nestAttributes(filters []ConnAttr) ([]byte, error) {
 		}
 	}
 
-	if len(tupleOrig) != 0 {
+	if len(tupleOrig) != 0 || len(protoOrig) != 0 {
 		data, err := nestDirTuple(1, tupleOrig, protoOrig)
 		if err != nil {
 			return nil, err
 		}
 		attributes = append(attributes, data...)
 	}
-	if len(tupleRepl) != 0 {
+	if len(tupleRepl) != 0 || len(protoRepl) != 0 {
 		data, err := nestDirTuple(0, tupleRepl, protoRepl)
 		if err != nil {
 			return nil, err

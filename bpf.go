@@ -55,11 +55,32 @@ type filterCheckStruct struct {
 }
 
 var filterCheck = map[ConnAttrType]filterCheckStruct{
-	AttrID:          {ct: ctaID, len: 4},
-	AttrUse:         {ct: ctaUse, len: 4},
-	AttrStatus:      {ct: ctaStatus, len: 4},
-	AttrOrigL4Proto: {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
-	AttrReplL4Proto: {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleReply, ctaTupleProto}},
+	AttrOrigPortSrc:   {ct: ctaProtoSrcPort, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrOrigPortDst:   {ct: ctaProtoDstPort, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrReplPortSrc:   {ct: ctaProtoSrcPort, len: 2, nest: []uint32{ctaTupleReply, ctaTupleProto}},
+	AttrReplPortDst:   {ct: ctaProtoDstPort, len: 2, nest: []uint32{ctaTupleReply, ctaTupleProto}},
+	AttrIcmpType:      {ct: ctaProtoIcmpType, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrIcmpCode:      {ct: ctaProtoIcmpCode, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrIcmpID:        {ct: ctaProtoIcmpID, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrOrigL4Proto:   {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrReplL4Proto:   {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleReply, ctaTupleProto}},
+	AttrTCPState:      {ct: ctaProtoinfoTCPState, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoTCP}},
+	AttrTimeout:       {ct: ctaTimeout, len: 4},
+	AttrMark:          {ct: ctaMark, len: 4},
+	AttrUse:           {ct: ctaUse, len: 4},
+	AttrID:            {ct: ctaID, len: 4},
+	AttrStatus:        {ct: ctaStatus, len: 4},
+	AttrTCPFlagsOrig:  {ct: ctaProtoinfoTCPFlagsOrig, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoTCP}},
+	AttrTCPFlagsRepl:  {ct: ctaProtoinfoTCPFlagsRepl, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoTCP}},
+	AttrSecmark:       {ct: ctaSecmark, len: 4},
+	AttrSctpState:     {ct: ctaProtoinfoSCTPState, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoSCTP}},
+	AttrSctpVtagOrig:  {ct: ctaProtoinfoSCTPVTagOriginal, len: 4, nest: []uint32{ctaProtoinfo, ctaProtoinfoSCTP}},
+	AttrSctpVtagRepl:  {ct: ctaProtoinfoSCTPVTagReply, len: 4, nest: []uint32{ctaProtoinfo, ctaProtoinfoSCTP}},
+	AttrDccpState:     {ct: ctaProtoinfoDCCPState, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoDCCP}},
+	AttrDccpRole:      {ct: ctaProtoinfoDCCPRole, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoDCCP}},
+	AttrTCPWScaleOrig: {ct: ctaProtoinfoTCPWScaleOrig, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoTCP}},
+	AttrTCPWScaleRepl: {ct: ctaProtoinfoTCPWScaleRepl, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoTCP}},
+	AttrZone:          {ct: ctaZone, len: 2},
 }
 
 func encodeValue(data []byte) (val uint32) {
