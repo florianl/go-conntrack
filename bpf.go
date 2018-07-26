@@ -13,6 +13,7 @@ import (
 var (
 	ErrFilterLength                  = errors.New("Number of filtering instructions are too high")
 	ErrFilterAttributeLength         = errors.New("Incorrect length of filter attribute")
+	ErrFilterAttributeMaskLength     = errors.New("Incorrect length of filter mask")
 	ErrFilterAttributeNotImplemented = errors.New("Filter attribute not implemented")
 )
 
@@ -51,12 +52,17 @@ const (
 
 type filterCheckStruct struct {
 	ct, len int
+	mask    bool
 	nest    []uint32
 }
 
 var filterCheck = map[ConnAttrType]filterCheckStruct{
+	AttrOrigIPv4Src:   {ct: ctaIPv4Src, len: 4, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
+	AttrOrigIPv4Dst:   {ct: ctaIPv4Dst, len: 4, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
 	AttrOrigPortSrc:   {ct: ctaProtoSrcPort, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
 	AttrOrigPortDst:   {ct: ctaProtoDstPort, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
+	AttrReplIPv4Src:   {ct: ctaIPv4Src, len: 4, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
+	AttrReplIPv4Dst:   {ct: ctaIPv4Dst, len: 4, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
 	AttrReplPortSrc:   {ct: ctaProtoSrcPort, len: 2, nest: []uint32{ctaTupleReply, ctaTupleProto}},
 	AttrReplPortDst:   {ct: ctaProtoDstPort, len: 2, nest: []uint32{ctaTupleReply, ctaTupleProto}},
 	AttrIcmpType:      {ct: ctaProtoIcmpType, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
@@ -66,7 +72,7 @@ var filterCheck = map[ConnAttrType]filterCheckStruct{
 	AttrReplL4Proto:   {ct: ctaProtoNum, len: 1, nest: []uint32{ctaTupleReply, ctaTupleProto}},
 	AttrTCPState:      {ct: ctaProtoinfoTCPState, len: 1, nest: []uint32{ctaProtoinfo, ctaProtoinfoTCP}},
 	AttrTimeout:       {ct: ctaTimeout, len: 4},
-	AttrMark:          {ct: ctaMark, len: 4},
+	AttrMark:          {ct: ctaMark, len: 4, mask: true},
 	AttrUse:           {ct: ctaUse, len: 4},
 	AttrID:            {ct: ctaID, len: 4},
 	AttrStatus:        {ct: ctaStatus, len: 4},
@@ -95,6 +101,33 @@ func encodeValue(data []byte) (val uint32) {
 	return
 }
 
+func compareValue(filter ConnAttr) []bpf.RawInstruction {
+	var raw []bpf.RawInstruction
+	var bpfOp uint16
+
+	switch len(filter.Data) {
+	case 1:
+		bpfOp = bpfB
+	case 2:
+		bpfOp = bpfH
+	case 4:
+		bpfOp = bpfW
+	}
+
+	tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: 4}
+	raw = append(raw, tmp)
+	if filterCheck[filter.Type].mask {
+		mask := encodeValue(filter.Mask)
+		tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
+
+	}
+	val := encodeValue(filter.Data)
+	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 1}
+	raw = append(raw, tmp)
+
+	return raw
+}
+
 func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	nested := len(filterCheck[filter.Type].nest)
@@ -102,6 +135,13 @@ func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 14
 	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 14}
 	raw = append(raw, tmp)
+
+	// followInstr represents the number of raw instructions to the reject jump
+	// after the nestes ones
+	var followInstr uint8 = 8
+	if filterCheck[filter.Type].mask {
+		followInstr++
+	}
 
 	if nested != 0 {
 		for i, nest := range filterCheck[filter.Type].nest {
@@ -112,8 +152,8 @@ func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 			raw = append(raw, tmp)
 
 			// jump, if nest not found
-			failed := 8 + (nested-i-1)*4
-			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: uint8(failed)}
+			failed := followInstr + uint8((nested-i-1)*4)
+			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: failed}
 			raw = append(raw, tmp)
 
 			tmp = bpf.RawInstruction{Op: bpfALU | bpfADD | bpfK, K: 4}
@@ -134,13 +174,9 @@ func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
 	raw = append(raw, tmp)
 
-	tmp = bpf.RawInstruction{Op: bpfLD | bpfIND | bpfB, K: 4}
-	raw = append(raw, tmp)
-
 	// compare expected and actual value
-	val := encodeValue(filter.Data)
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 1}
-	raw = append(raw, tmp)
+	tmps := compareValue(filter)
+	raw = append(raw, tmps...)
 
 	// reject
 	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject}
@@ -184,6 +220,9 @@ func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, 
 		}
 		if len(filter.Data) != filterCheck[filter.Type].len {
 			return nil, ErrFilterAttributeLength
+		}
+		if filterCheck[filter.Type].mask && len(filter.Mask) != filterCheck[filter.Type].len {
+			return nil, ErrFilterAttributeMaskLength
 		}
 		tmp = filterAttribute(filter)
 		raw = append(raw, tmp...)
