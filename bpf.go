@@ -319,9 +319,9 @@ func (nfct *Nfct) attachFilter(subsys CtTable, filters []ConnAttr) error {
 	if err != nil {
 		return err
 	}
-	return nfct.con.SetBPF(bpfFilters)
+	return nfct.Con.SetBPF(bpfFilters)
 }
 
 func (nfct *Nfct) removeFilter() error {
-	return nfct.con.RemoveBPF()
+	return nfct.Con.RemoveBPF()
 }

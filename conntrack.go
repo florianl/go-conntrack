@@ -34,14 +34,14 @@ func Open() (*Nfct, error) {
 	if err != nil {
 		return nil, err
 	}
-	nfct.con = con
+	nfct.Con = con
 
 	return &nfct, nil
 }
 
 // Close the connection to the conntrack subsystem
 func (nfct *Nfct) Close() error {
-	return nfct.con.Close()
+	return nfct.Con.Close()
 }
 
 // Flush a conntrack subsystem
@@ -142,7 +142,7 @@ func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group Netlink
 }
 
 func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
-	if err := nfct.con.JoinGroup(uint32(group)); err != nil {
+	if err := nfct.Con.JoinGroup(uint32(group)); err != nil {
 		return nil, err
 	}
 	if err := nfct.attachFilter(t, filter); err != nil {
@@ -154,7 +154,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, f
 			if err := nfct.removeFilter(); err != nil {
 				ctrl <- err
 			}
-			if err := nfct.con.LeaveGroup(uint32(group)); err != nil {
+			if err := nfct.Con.LeaveGroup(uint32(group)); err != nil {
 				ctrl <- err
 			}
 			close(ctrl)
@@ -167,7 +167,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, f
 				return
 			default:
 			}
-			reply, err := nfct.con.Receive()
+			reply, err := nfct.Con.Receive()
 			if err != nil {
 				ctrl <- err
 				return
@@ -212,7 +212,7 @@ func unmarschalErrMsg(b []byte) (ErrMsg, error) {
 }
 
 func (nfct *Nfct) execute(req netlink.Message) error {
-	reply, e := nfct.con.Execute(req)
+	reply, e := nfct.Con.Execute(req)
 	if e != nil {
 		return e
 	}
@@ -232,7 +232,7 @@ func (nfct *Nfct) execute(req netlink.Message) error {
 }
 
 func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
-	verify, err := nfct.con.Send(req)
+	verify, err := nfct.Con.Send(req)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 		return nil, err
 	}
 
-	reply, err := nfct.con.Receive()
+	reply, err := nfct.Con.Receive()
 	if err != nil {
 		return nil, err
 	}

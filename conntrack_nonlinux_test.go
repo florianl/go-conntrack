@@ -1,15 +1,16 @@
 //+build !linux
 
-package conntrack
+package conntrack_test
 
 import "testing"
+import ct "github.com/florianl/go-conntrack"
 
 func TestOthersUnimplemented(t *testing.T) {
-	want := ErrNotLinux
+	want := ct.ErrNotLinux
 
-	nfct := &Nfct{}
+	nfct := &ct.Nfct{}
 
-	if _, got := Open(); want != got {
+	if _, got := ct.Open(); want != got {
 		t.Fatalf("unexpected error during Open:\n- want: %v\n-  got: %v", want, got)
 	}
 

@@ -7,7 +7,8 @@ import (
 
 // Nfct represents a conntrack handler
 type Nfct struct {
-	con *netlink.Conn
+	// Con is the pure representation of a netlink socket
+	Con *netlink.Conn
 }
 
 // Conn contains all the information of a connection
