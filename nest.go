@@ -112,7 +112,6 @@ func nestAttributes(filters []ConnAttr) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		hexData(data)
 		attributes = append(attributes, data...)
 	}
 	if len(tupleRepl) != 0 {
