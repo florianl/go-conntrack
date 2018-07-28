@@ -135,6 +135,8 @@ func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, f
 
 // RegisterFiltered registers your function to receive events from a Netlinkgroup and applies a filter.
 // If your function returns something different than 0, it will stop.
+// ConnAttr of the same ConnAttrType will be linked by an OR operation.
+// Otherwise, ConnAttr of different ConnAttrType will be connected by an AND operation for the filter.
 func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
 	return nfct.register(ctx, t, group, filter, fn)
 }

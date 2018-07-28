@@ -145,6 +145,7 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	var bpfOp uint16
 	masking := filterCheck[filters[0].Type].mask
+	var first = true
 
 	switch len(filters[0].Data) {
 	case 1:
@@ -160,20 +161,29 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 
 	for i, filter := range filters {
 		if masking {
-			tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
+			if first {
+				tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
+				first = false
+			} else {
+				tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
+			}
 			raw = append(raw, tmp)
 
 			mask := encodeValue(filter.Mask)
 			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
 			raw = append(raw, tmp)
+			jumps := (len(filters)-i)*3 - 1
+			val := encodeValue(filter.Data)
+			val &= mask
+			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+			raw = append(raw, tmp)
+		} else {
+			jumps := (len(filters) - i)
+			val := encodeValue(filter.Data)
+			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+			raw = append(raw, tmp)
+
 		}
-		jumps := (len(filters) - i)
-		if masking {
-			jumps = (len(filters)-i)*3 - 1
-		}
-		val := encodeValue(filter.Data)
-		tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
-		raw = append(raw, tmp)
 	}
 	if masking {
 		tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}

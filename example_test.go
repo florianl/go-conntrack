@@ -1,8 +1,10 @@
 package conntrack_test
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"time"
 
 	ct "github.com/florianl/go-conntrack"
 )
@@ -84,5 +86,34 @@ func ExampleNfct_Query() {
 		odstIP := net.IP(x[ct.AttrOrigIPv6Dst])
 		fmt.Printf("src: %s\tdst: %s \n", osrcIP, odstIP)
 
+	}
+}
+
+func ExampleNfct_RegisterFiltered() {
+	nfct, err := ct.Open()
+	if err != nil {
+		fmt.Println("Could not create nfct:", err)
+		return
+	}
+	defer nfct.Close()
+	errChan, err := nfct.RegisterFiltered(
+		context.Background(), ct.Ct, ct.NetlinkCtUpdate,
+		[]ct.ConnAttr{
+			{Type: ct.AttrOrigL4Proto, Data: []byte{0x11}}, // TCP
+			{Type: ct.AttrOrigL4Proto, Data: []byte{0x06}}, // UDP
+		},
+		func(c ct.Conn) int { fmt.Println(c); return 0 },
+	)
+	if err != nil {
+		fmt.Println("Could not register with filter:", err)
+		return
+	}
+	for {
+		select {
+		case errMsg := <-errChan:
+			fmt.Println(errMsg)
+		case <-time.After(10 * time.Second):
+			break
+		}
 	}
 }
