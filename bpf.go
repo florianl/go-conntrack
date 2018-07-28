@@ -141,11 +141,12 @@ func encodeValue(data []byte) (val uint32) {
 	return
 }
 
-func compareValue(filter ConnAttr) []bpf.RawInstruction {
+func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	var bpfOp uint16
+	masking := filterCheck[filters[0].Type].mask
 
-	switch len(filter.Data) {
+	switch len(filters[0].Data) {
 	case 1:
 		bpfOp = bpfB
 	case 2:
@@ -156,21 +157,34 @@ func compareValue(filter ConnAttr) []bpf.RawInstruction {
 
 	tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: 4}
 	raw = append(raw, tmp)
-	if filterCheck[filter.Type].mask {
-		mask := encodeValue(filter.Mask)
-		tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
 
+	for i, filter := range filters {
+		if masking {
+			tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
+			raw = append(raw, tmp)
+
+			mask := encodeValue(filter.Mask)
+			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
+			raw = append(raw, tmp)
+		}
+		jumps := (len(filters) - i)
+		if masking {
+			jumps = (len(filters)-i)*3 - 1
+		}
+		val := encodeValue(filter.Data)
+		tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+		raw = append(raw, tmp)
 	}
-	val := encodeValue(filter.Data)
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 1}
-	raw = append(raw, tmp)
-
+	if masking {
+		tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
+		raw = append(raw, tmp)
+	}
 	return raw
 }
 
-func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
+func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
-	nested := len(filterCheck[filter.Type].nest)
+	nested := len(filterCheck[filters[0].Type].nest)
 
 	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 14
 	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 14}
@@ -178,13 +192,15 @@ func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 
 	// followInstr represents the number of raw instructions to the reject jump
 	// after the nestes ones
-	var followInstr uint8 = 8
-	if filterCheck[filter.Type].mask {
-		followInstr++
+	var followInstr uint8 = 7
+	masking := filterCheck[filters[0].Type].mask
+	followInstr += uint8(len(filters))
+	if masking {
+		followInstr += uint8(len(filters)*2 + 1)
 	}
 
 	if nested != 0 {
-		for i, nest := range filterCheck[filter.Type].nest {
+		for i, nest := range filterCheck[filters[0].Type].nest {
 			// find nest attribute
 			tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(nest)}
 			raw = append(raw, tmp)
@@ -202,20 +218,24 @@ func filterAttribute(filter ConnAttr) []bpf.RawInstruction {
 	}
 
 	// find final attribute
-	tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(filterCheck[filter.Type].ct)}
+	tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(filterCheck[filters[0].Type].ct)}
 	raw = append(raw, tmp)
 	tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
 	raw = append(raw, tmp)
 
 	// attribute not found
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: 4}
+	jumps := len(filters) + 3
+	if masking {
+		jumps += len(filters)*2 + 1
+	}
+	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: uint8(jumps)}
 	raw = append(raw, tmp)
 
 	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
 	raw = append(raw, tmp)
 
 	// compare expected and actual value
-	tmps := compareValue(filter)
+	tmps := compareValue(filters)
 	raw = append(raw, tmps...)
 
 	// reject
@@ -250,6 +270,7 @@ func filterSubsys(subsys uint32) []bpf.RawInstruction {
 
 func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, error) {
 	var raw []bpf.RawInstruction
+	filterMap := make(map[ConnAttrType][]ConnAttr)
 
 	tmp := filterSubsys(uint32(subsys))
 	raw = append(raw, tmp...)
@@ -264,7 +285,11 @@ func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, 
 		if filterCheck[filter.Type].mask && len(filter.Mask) != filterCheck[filter.Type].len {
 			return nil, ErrFilterAttributeMaskLength
 		}
-		tmp = filterAttribute(filter)
+		filterMap[filter.Type] = append(filterMap[filter.Type], filter)
+	}
+
+	for _, x := range filterMap {
+		tmp = filterAttribute(x)
 		raw = append(raw, tmp...)
 	}
 
