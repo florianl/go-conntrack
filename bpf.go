@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/bpf"
 )
 
-// Various errors which may occour when processing filters
+// Various errors which may occur when processing filters
 var (
 	ErrFilterLength                  = errors.New("Number of filtering instructions are too high")
 	ErrFilterAttributeLength         = errors.New("Incorrect length of filter attribute")

@@ -8,7 +8,7 @@ import (
 	"github.com/mdlayher/netlink"
 )
 
-// Error which may occour when processing the filter attribute
+// Error which may occur when processing the filter attribute
 var (
 	ErrFilterAttrLength = errors.New("Incorrect length of filter attribute")
 )

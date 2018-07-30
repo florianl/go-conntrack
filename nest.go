@@ -8,7 +8,7 @@ import (
 	"github.com/mdlayher/netlink"
 )
 
-// Various errors which may occour when processing attributes
+// Various errors which may occur when processing attributes
 var (
 	ErrAttrLength         = errors.New("Incorrect length of attribute")
 	ErrAttrNotImplemented = errors.New("Attribute not implemented")
