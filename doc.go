@@ -6,9 +6,10 @@ Example:
 	package main
 	import (
 		"fmt"
-		"net"
+
 		ct "github.com/florianl/go-conntrack"
 	)
+
 	func main() {
 		// Opens the socket for the communication with the subsystem
 		nfct, err := ct.Open()
@@ -19,12 +20,17 @@ Example:
 		defer nfct.Close()
 
 		// Get all IPv4 sessions
-		sessions, _ := nfct.Dump(ct.Ct, ct.CtIPv4)
+		sessions, err := nfct.Dump(ct.Ct, ct.CtIPv4)
+		if err != nil {
+			fmt.Println("Could not dump sessions:", err)
+			return
+		}
+
 		for _, x := range sessions {
-			srcIP := net.IP(x[ct.AttrOrigIPv4Src])
-			dstIP := net.IP(x[ct.AttrOrigIPv4Dst])
+			oSrcIP, _ := x.OrigSrcIP()
+			oDstIP, _ := x.OrigDstIP()
 			// Print source and destination for each IPv4 session
-			fmt.Println("src:", srcIP, "\tdst:",dstIP)
+			fmt.Printf("src: %s\tdst: %s \n", oSrcIP, oDstIP)
 		}
 	}
 

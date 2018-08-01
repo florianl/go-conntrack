@@ -23,9 +23,9 @@ func ExampleNfct_Dump() {
 	}
 
 	for _, x := range sessions {
-		osrcIP := net.IP(x[ct.AttrOrigIPv4Src])
-		odstIP := net.IP(x[ct.AttrOrigIPv4Dst])
-		fmt.Printf("src: %s\tdst: %s \n", osrcIP, odstIP)
+		oSrcIP, _ := x.OrigSrcIP()
+		oDstIP, _ := x.OrigDstIP()
+		fmt.Printf("src: %s\tdst: %s \n", oSrcIP, oDstIP)
 	}
 }
 
@@ -82,9 +82,9 @@ func ExampleNfct_Query() {
 		return
 	}
 	for _, x := range sessions {
-		osrcIP := net.IP(x[ct.AttrOrigIPv6Src])
-		odstIP := net.IP(x[ct.AttrOrigIPv6Dst])
-		fmt.Printf("src: %s\tdst: %s \n", osrcIP, odstIP)
+		oSrcIP, _ := x.OrigSrcIP()
+		oDstIP, _ := x.OrigDstIP()
+		fmt.Printf("src: %s\tdst: %s \n", oSrcIP, oDstIP)
 
 	}
 }
