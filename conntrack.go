@@ -272,6 +272,13 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 }
 
 func parseConnectionMsg(msg netlink.Message) (Conn, error) {
+	if msg.Header.Type&netlink.HeaderTypeError == netlink.HeaderTypeError {
+		errMsg, err := unmarschalErrMsg(msg.Data)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%#v", errMsg)
+	}
 	conn, err := extractAttributes(msg.Data)
 	if err != nil {
 		return nil, err
