@@ -18,7 +18,7 @@ func TestFlush(t *testing.T) {
 		want   []netlink.Message
 	}{
 		{name: "Flush IPv4", family: ct.CtIPv4, want: []netlink.Message{
-			netlink.Message{
+			{
 				Header: netlink.Header{
 					Length: 20,
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
@@ -36,7 +36,7 @@ func TestFlush(t *testing.T) {
 		},
 		},
 		{name: "Flush IPv6", family: ct.CtIPv6, want: []netlink.Message{
-			netlink.Message{
+			{
 				Header: netlink.Header{
 					Length: 20,
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
@@ -94,7 +94,7 @@ func TestCreate(t *testing.T) {
 		want       []netlink.Message
 	}{
 		{name: "noAttributes", attributes: []ct.ConnAttr{}, want: []netlink.Message{
-			netlink.Message{
+			{
 				Header: netlink.Header{
 					Length: 20,
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_NEW
@@ -112,15 +112,15 @@ func TestCreate(t *testing.T) {
 		}},
 		// Example from libnetfilter_conntrack/utils/conntrack_create.c
 		{name: "conntrack_create.c", attributes: []ct.ConnAttr{
-			ct.ConnAttr{Type: ct.AttrOrigIPv4Src, Data: []byte{0x1, 0x1, 0x1, 0x1}}, // SrcIP
-			ct.ConnAttr{Type: ct.AttrOrigIPv4Dst, Data: []byte{0x2, 0x2, 0x2, 0x2}}, // DstIP
-			ct.ConnAttr{Type: ct.AttrOrigL4Proto, Data: []byte{0x11}},               // TCP
-			ct.ConnAttr{Type: ct.AttrOrigPortSrc, Data: []byte{0x00, 0x14}},         // SrcPort
-			ct.ConnAttr{Type: ct.AttrOrigPortDst, Data: []byte{0x00, 0x0A}},         // DstPort
-			ct.ConnAttr{Type: ct.AttrTCPState, Data: []byte{0x1}},                   // TCP-State
-			ct.ConnAttr{Type: ct.AttrTimeout, Data: []byte{0x00, 0x00, 0x00, 0x64}}, // Timeout
+			{Type: ct.AttrOrigIPv4Src, Data: []byte{0x1, 0x1, 0x1, 0x1}}, // SrcIP
+			{Type: ct.AttrOrigIPv4Dst, Data: []byte{0x2, 0x2, 0x2, 0x2}}, // DstIP
+			{Type: ct.AttrOrigL4Proto, Data: []byte{0x11}},               // TCP
+			{Type: ct.AttrOrigPortSrc, Data: []byte{0x00, 0x14}},         // SrcPort
+			{Type: ct.AttrOrigPortDst, Data: []byte{0x00, 0x0A}},         // DstPort
+			{Type: ct.AttrTCPState, Data: []byte{0x1}},                   // TCP-State
+			{Type: ct.AttrTimeout, Data: []byte{0x00, 0x00, 0x00, 0x64}}, // Timeout
 		}, want: []netlink.Message{
-			netlink.Message{
+			{
 				Header: netlink.Header{
 					Length: 80,
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_NEW
