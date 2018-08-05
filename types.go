@@ -143,6 +143,13 @@ var (
 	ErrConnNoAttr  = errors.New("Conn has not this attribute")
 )
 
+// Various errors which may occur when processing attributes
+var (
+	ErrAttrLength         = errors.New("Incorrect length of attribute")
+	ErrAttrNotImplemented = errors.New("Attribute not implemented")
+	ErrAttrNotExist       = errors.New("Type of attribute does not exist")
+)
+
 // OrigSrcIP returns the net.IP representation of the source IP
 func (c Conn) OrigSrcIP() (net.IP, error) {
 	if data, ok := c[AttrOrigIPv6Src]; ok {

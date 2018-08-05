@@ -3,16 +3,7 @@
 package conntrack
 
 import (
-	"errors"
-
 	"github.com/mdlayher/netlink"
-)
-
-// Various errors which may occur when processing attributes
-var (
-	ErrAttrLength         = errors.New("Incorrect length of attribute")
-	ErrAttrNotImplemented = errors.New("Attribute not implemented")
-	ErrAttrNotExist       = errors.New("Type of attribute does not exist")
 )
 
 func nestSubTuple(tupleType uint16, sub []netlink.Attribute) ([]byte, error) {
