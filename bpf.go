@@ -195,22 +195,14 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	nested := len(filterCheck[filters[0].Type].nest)
+	failed := uint8(255)
 
 	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 14
 	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 14}
 	raw = append(raw, tmp)
 
-	// followInstr represents the number of raw instructions to the reject jump
-	// after the nestes ones
-	var followInstr uint8 = 7
-	masking := filterCheck[filters[0].Type].mask
-	followInstr += uint8(len(filters))
-	if masking {
-		followInstr += uint8(len(filters)*2 + 1)
-	}
-
 	if nested != 0 {
-		for i, nest := range filterCheck[filters[0].Type].nest {
+		for _, nest := range filterCheck[filters[0].Type].nest {
 			// find nest attribute
 			tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(nest)}
 			raw = append(raw, tmp)
@@ -218,7 +210,6 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 			raw = append(raw, tmp)
 
 			// jump, if nest not found
-			failed := followInstr + uint8((nested-i-1)*4)
 			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: failed}
 			raw = append(raw, tmp)
 
@@ -233,12 +224,7 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
 	raw = append(raw, tmp)
 
-	// attribute not found
-	jumps := len(filters) + 3
-	if masking {
-		jumps += len(filters)*2 + 1
-	}
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: uint8(jumps)}
+	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: failed}
 	raw = append(raw, tmp)
 
 	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
@@ -247,6 +233,15 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	// compare expected and actual value
 	tmps := compareValue(filters)
 	raw = append(raw, tmps...)
+
+	// Failed jumps are set to 255. Now we correct them to the actual failed jump instruction
+	j := uint8(1)
+	for i := len(raw) - 1; i > 0; i-- {
+		if (raw[i].Jt == 255) && (raw[i].Op == bpfJMP|bpfJEQ|bpfK) {
+			raw[i].Jt = j
+		}
+		j++
+	}
 
 	// reject
 	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject}
