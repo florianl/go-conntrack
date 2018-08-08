@@ -164,10 +164,10 @@ func (c Conn) OrigSrcIP() (net.IP, error) {
 
 // OrigDstIP returns the net.IP representation of the destination IP
 func (c Conn) OrigDstIP() (net.IP, error) {
-	if data, ok := c[AttrOrigIPv6Src]; ok {
+	if data, ok := c[AttrOrigIPv6Dst]; ok {
 		ip := net.IP(data)
 		return ip, nil
-	} else if data, ok := c[AttrOrigIPv4Src]; ok {
+	} else if data, ok := c[AttrOrigIPv4Dst]; ok {
 		ip := net.IPv4(data[0], data[1], data[2], data[3])
 		return ip, nil
 	}
