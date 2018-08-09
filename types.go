@@ -54,6 +54,8 @@ type ConnAttr struct {
 	Data []byte
 	// Mask is required for specific attributes, if you want to filter for them
 	Mask []byte
+	// Negates this attribute for filtering
+	Negate bool
 }
 
 // ConnAttrType specifies the attribute of a connection
