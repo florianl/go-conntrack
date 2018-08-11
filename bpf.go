@@ -15,6 +15,7 @@ var (
 	ErrFilterAttributeLength         = errors.New("Incorrect length of filter attribute")
 	ErrFilterAttributeMaskLength     = errors.New("Incorrect length of filter mask")
 	ErrFilterAttributeNotImplemented = errors.New("Filter attribute not implemented")
+	ErrFilterAttributeNegateMix      = errors.New("Can not mix negation for attribute of the same type")
 )
 
 // various consts from include/uapi/linux/bpf_common.h
@@ -146,8 +147,9 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 	var bpfOp uint16
 	masking := filterCheck[filters[0].Type].mask
 	var first = true
+	var dataLen = len(filters[0].Data)
 
-	switch len(filters[0].Data) {
+	switch dataLen {
 	case 1:
 		bpfOp = bpfB
 	case 2:
@@ -156,18 +158,17 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 		bpfOp = bpfW
 	}
 
-	tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: 4}
+	tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
 	raw = append(raw, tmp)
 
 	for i, filter := range filters {
 		if masking {
 			if first {
-				tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
 				first = false
 			} else {
-				tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
+				tmp = bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(dataLen)}
+				raw = append(raw, tmp)
 			}
-			raw = append(raw, tmp)
 
 			mask := encodeValue(filter.Mask)
 			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
@@ -185,10 +186,7 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 
 		}
 	}
-	if masking {
-		tmp = bpf.RawInstruction{Op: bpfMISC | bpfTXA}
-		raw = append(raw, tmp)
-	}
+
 	return raw
 }
 
@@ -197,8 +195,8 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	nested := len(filterCheck[filters[0].Type].nest)
 	failed := uint8(255)
 
-	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 14
-	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 14}
+	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 20
+	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 0x14}
 	raw = append(raw, tmp)
 
 	if nested != 0 {
@@ -234,6 +232,11 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	tmps := compareValue(filters)
 	raw = append(raw, tmps...)
 
+	// negate filter
+	if filters[0].Negate {
+		raw = append(raw, bpf.RawInstruction{Op: bpfJMP | bpfJA, K: 1})
+	}
+
 	// Failed jumps are set to 255. Now we correct them to the actual failed jump instruction
 	j := uint8(1)
 	for i := len(raw) - 1; i > 0; i-- {
@@ -241,11 +244,6 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 			raw[i].Jt = j
 		}
 		j++
-	}
-
-	// negate filter
-	if filters[0].Negate {
-		raw = append(raw, bpf.RawInstruction{Op: bpfJMP | bpfJA, K: 1})
 	}
 
 	// reject
@@ -295,6 +293,14 @@ func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, 
 			return nil, ErrFilterAttributeMaskLength
 		}
 		filterMap[filter.Type] = append(filterMap[filter.Type], filter)
+
+		if len(filterMap[filter.Type]) == 1 {
+			filterMap[filter.Type][0].Negate = filter.Negate
+		} else {
+			if filter.Negate != filterMap[filter.Type][0].Negate {
+				return nil, ErrFilterAttributeNegateMix
+			}
+		}
 	}
 
 	for _, x := range filterMap {
