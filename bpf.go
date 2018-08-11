@@ -243,9 +243,13 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 		j++
 	}
 
+	// negate filter
+	if filters[0].Negate {
+		raw = append(raw, bpf.RawInstruction{Op: bpfJMP | bpfJA, K: 1})
+	}
+
 	// reject
-	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject}
-	raw = append(raw, tmp)
+	raw = append(raw, bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject})
 
 	return raw
 }
