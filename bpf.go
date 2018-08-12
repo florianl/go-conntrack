@@ -5,6 +5,7 @@ package conntrack
 import (
 	"encoding/binary"
 	"errors"
+	"sort"
 
 	"golang.org/x/net/bpf"
 )
@@ -142,7 +143,38 @@ func encodeValue(data []byte) (val uint32) {
 	return
 }
 
-func compareValue(filters []ConnAttr) []bpf.RawInstruction {
+func compareValue(first, masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filter ConnAttr) []bpf.RawInstruction {
+	var raw []bpf.RawInstruction
+
+	if masking {
+		/*
+			if first {
+				first = false
+			} else {
+				tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(dataLen)}
+				raw = append(raw, tmp)
+			}
+		*/
+		mask := encodeValue(filter.Mask)
+		tmp := bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
+		raw = append(raw, tmp)
+		jumps := (filterLen-i)*3 - 1
+		val := encodeValue(filter.Data)
+		val &= mask
+		tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+		raw = append(raw, tmp)
+	} else {
+		jumps := (filterLen - i)
+		val := encodeValue(filter.Data)
+		tmp := bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+		raw = append(raw, tmp)
+
+	}
+
+	return raw
+}
+
+func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	var bpfOp uint16
 	masking := filterCheck[filters[0].Type].mask
@@ -156,35 +188,21 @@ func compareValue(filters []ConnAttr) []bpf.RawInstruction {
 		bpfOp = bpfH
 	case 4:
 		bpfOp = bpfW
+	case 16:
+		bpfOp = bpfW
 	}
 
 	tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
 	raw = append(raw, tmp)
 
+	sort.Slice(filters, func(i, j int) bool {
+		return filters[i].Type > filters[j].Type
+	})
+
 	for i, filter := range filters {
-		if masking {
-			if first {
-				first = false
-			} else {
-				tmp = bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(dataLen)}
-				raw = append(raw, tmp)
-			}
-
-			mask := encodeValue(filter.Mask)
-			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
-			raw = append(raw, tmp)
-			jumps := (len(filters)-i)*3 - 1
-			val := encodeValue(filter.Data)
-			val &= mask
-			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
-			raw = append(raw, tmp)
-		} else {
-			jumps := (len(filters) - i)
-			val := encodeValue(filter.Data)
-			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
-			raw = append(raw, tmp)
-
-		}
+		tmp := compareValue(first, masking, uint32(len(filters)), uint32(dataLen), uint32(i), bpfOp, filter)
+		raw = append(raw, tmp...)
+		first = false
 	}
 
 	return raw
@@ -229,7 +247,7 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	raw = append(raw, tmp)
 
 	// compare expected and actual value
-	tmps := compareValue(filters)
+	tmps := compareValues(filters)
 	raw = append(raw, tmps...)
 
 	// negate filter
