@@ -61,14 +61,14 @@ type filterCheckStruct struct {
 var filterCheck = map[ConnAttrType]filterCheckStruct{
 	AttrOrigIPv4Src:             {ct: ctaIPv4Src, len: 4, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
 	AttrOrigIPv4Dst:             {ct: ctaIPv4Dst, len: 4, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
-	AttrOrigIPv6Src:             {ct: ctaUnspec, len: 16, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
-	AttrOrigIPv6Dst:             {ct: ctaUnspec, len: 16, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
+	AttrOrigIPv6Src:             {ct: ctaIPv6Src, len: 16, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
+	AttrOrigIPv6Dst:             {ct: ctaIPv6Dst, len: 16, mask: true, nest: []uint32{ctaTupleOrig, ctaTupleIP}},
 	AttrOrigPortSrc:             {ct: ctaProtoSrcPort, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
 	AttrOrigPortDst:             {ct: ctaProtoDstPort, len: 2, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
 	AttrReplIPv4Src:             {ct: ctaIPv4Src, len: 4, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
 	AttrReplIPv4Dst:             {ct: ctaIPv4Dst, len: 4, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
-	AttrReplIPv6Src:             {ct: ctaUnspec, len: 16, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
-	AttrReplIPv6Dst:             {ct: ctaUnspec, len: 16, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
+	AttrReplIPv6Src:             {ct: ctaIPv6Src, len: 16, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
+	AttrReplIPv6Dst:             {ct: ctaIPv6Dst, len: 16, mask: true, nest: []uint32{ctaTupleReply, ctaTupleIP}},
 	AttrReplPortSrc:             {ct: ctaProtoSrcPort, len: 2, nest: []uint32{ctaTupleReply, ctaTupleProto}},
 	AttrReplPortDst:             {ct: ctaProtoDstPort, len: 2, nest: []uint32{ctaTupleReply, ctaTupleProto}},
 	AttrIcmpType:                {ct: ctaProtoIcmpType, len: 1, nest: []uint32{ctaTupleOrig, ctaTupleProto}},
@@ -143,30 +143,44 @@ func encodeValue(data []byte) (val uint32) {
 	return
 }
 
-func compareValue(first, masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filter ConnAttr) []bpf.RawInstruction {
+func compareValue(masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filter ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 
 	if masking {
-		/*
-			if first {
-				first = false
-			} else {
-				tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(dataLen)}
+		if dataLen == 16 {
+			for i := 0; i < 4; i++ {
+				tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4 * (i + 1))}
+				raw = append(raw, tmp)
+				mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
+				tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
+				raw = append(raw, tmp)
+				val := encodeValue(filter.Data[i*4 : (i+1)*4])
+				val &= mask
+				if i == 3 {
+					tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 255}
+				} else {
+					tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jf: 255}
+				}
 				raw = append(raw, tmp)
 			}
-		*/
-		mask := encodeValue(filter.Mask)
-		tmp := bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
-		raw = append(raw, tmp)
-		jumps := (filterLen-i)*3 - 1
-		val := encodeValue(filter.Data)
-		val &= mask
-		tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
-		raw = append(raw, tmp)
+		} else {
+			tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
+			raw = append(raw, tmp)
+			mask := encodeValue(filter.Mask)
+			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
+			raw = append(raw, tmp)
+			jumps := (filterLen-i)*3 - 1
+			val := encodeValue(filter.Data)
+			val &= mask
+			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+			raw = append(raw, tmp)
+		}
 	} else {
+		tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
+		raw = append(raw, tmp)
 		jumps := (filterLen - i)
 		val := encodeValue(filter.Data)
-		tmp := bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+		tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
 		raw = append(raw, tmp)
 
 	}
@@ -178,7 +192,6 @@ func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	var bpfOp uint16
 	masking := filterCheck[filters[0].Type].mask
-	var first = true
 	var dataLen = len(filters[0].Data)
 
 	switch dataLen {
@@ -192,17 +205,13 @@ func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 		bpfOp = bpfW
 	}
 
-	tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
-	raw = append(raw, tmp)
-
 	sort.Slice(filters, func(i, j int) bool {
 		return filters[i].Type > filters[j].Type
 	})
 
 	for i, filter := range filters {
-		tmp := compareValue(first, masking, uint32(len(filters)), uint32(dataLen), uint32(i), bpfOp, filter)
+		tmp := compareValue(masking, uint32(len(filters)), uint32(dataLen), uint32(i), bpfOp, filter)
 		raw = append(raw, tmp...)
-		first = false
 	}
 
 	return raw
@@ -260,6 +269,8 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	for i := len(raw) - 1; i > 0; i-- {
 		if (raw[i].Jt == 255) && (raw[i].Op == bpfJMP|bpfJEQ|bpfK) {
 			raw[i].Jt = j
+		} else if (raw[i].Jf == 255) && (raw[i].Op == bpfJMP|bpfJEQ|bpfK) {
+			raw[i].Jf = j - 1
 		}
 		j++
 	}
