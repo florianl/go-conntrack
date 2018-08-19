@@ -147,32 +147,19 @@ func compareValue(masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filt
 	var raw []bpf.RawInstruction
 
 	if masking {
-		if dataLen == 16 {
-			for i := 0; i < 4; i++ {
-				tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4 * (i + 1))}
-				raw = append(raw, tmp)
-				mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
-				tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
-				raw = append(raw, tmp)
-				val := encodeValue(filter.Data[i*4 : (i+1)*4])
-				val &= mask
-				if i == 3 {
-					tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 255}
-				} else {
-					tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jf: 255}
-				}
-				raw = append(raw, tmp)
-			}
-		} else {
-			tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
+		for i := 0; i < (int(dataLen) / 4); i++ {
+			tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4 * (i + 1))}
 			raw = append(raw, tmp)
-			mask := encodeValue(filter.Mask)
+			mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
 			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
 			raw = append(raw, tmp)
-			jumps := (filterLen-i)*3 - 1
-			val := encodeValue(filter.Data)
+			val := encodeValue(filter.Data[i*4 : (i+1)*4])
 			val &= mask
-			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+			if i == (int(dataLen)/4 - 1) {
+				tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 255}
+			} else {
+				tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jf: 255}
+			}
 			raw = append(raw, tmp)
 		}
 	} else {
