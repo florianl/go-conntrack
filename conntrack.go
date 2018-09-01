@@ -127,9 +127,13 @@ func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error
 	return nfct.query(req)
 }
 
+// HookFunc is a function, that receives events from a Netlinkgroup.
+// Return something different than 0, to stop receiving messages.
+type HookFunc func(c Conn) int
+
 // Register your function to receive events from a Netlinkgroup.
 // If your function returns something different than 0, it will stop.
-func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, fn func(c Conn) int) (<-chan error, error) {
+func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, fn HookFunc) (<-chan error, error) {
 	return nfct.register(ctx, t, group, []ConnAttr{}, fn)
 }
 
@@ -137,7 +141,7 @@ func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, f
 // If your function returns something different than 0, it will stop.
 // ConnAttr of the same ConnAttrType will be linked by an OR operation.
 // Otherwise, ConnAttr of different ConnAttrType will be connected by an AND operation for the filter.
-func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
+func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn HookFunc) (<-chan error, error) {
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
