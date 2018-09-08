@@ -11,12 +11,11 @@ func nestSubTuple(tupleType uint16, sub []netlink.Attribute) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var tuple netlink.Attribute
-	tuple.Type = tupleType | nlafNested
-	tuple.Length = uint16(len(attr) + 4)
-	tuple.Data = attr
 
-	return tuple.MarshalBinary()
+	return netlink.MarshalAttributes([]netlink.Attribute{{
+		Type: tupleType | nlafNested,
+		Data: attr,
+	}})
 }
 
 func nestTuples(attrs []ConnAttr) ([]byte, error) {
@@ -40,10 +39,9 @@ func nestTuples(attrs []ConnAttr) ([]byte, error) {
 		}
 		data = append(data, tmp...)
 	}
-	tuple.Length = uint16(len(data) + 4)
 	tuple.Data = data
 
-	return tuple.MarshalBinary()
+	return netlink.MarshalAttributes([]netlink.Attribute{tuple})
 }
 
 func nestAttributes(filters []ConnAttr) ([]byte, error) {
