@@ -136,6 +136,8 @@ const (
 	AttrReplzone                ConnAttrType = iota /* u16 bits */
 	AttrSNatIPv6                ConnAttrType = iota /* u128 bits */
 	AttrDNatIPv6                ConnAttrType = iota /* u128 bits */
+
+	attrMax ConnAttrType = iota /* This is for internal use only	*/
 )
 
 // Various errors which may occur when procressing a connection

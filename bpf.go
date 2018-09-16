@@ -319,9 +319,12 @@ func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, 
 		}
 	}
 
-	for _, x := range filterMap {
-		tmp = filterAttribute(x)
-		raw = append(raw, tmp...)
+	// We can not simple range over the map, because the order of selected items can vary
+	for key := 0; key <= int(attrMax); key++ {
+		if x, ok := filterMap[ConnAttrType(key)]; ok {
+			tmp = filterAttribute(x)
+			raw = append(raw, tmp...)
+		}
 	}
 
 	// final verdict -> Accept
