@@ -3,7 +3,6 @@
 package conntrack_test
 
 import (
-	"reflect"
 	"testing"
 
 	ct "github.com/florianl/go-conntrack"
@@ -70,11 +69,26 @@ func TestFlush(t *testing.T) {
 				// To ignore the Sequence number, we set it to the same value
 				tc.want[0].Header.Sequence = reqs[0].Header.Sequence
 
-				if want, got := reqs, tc.want; !reflect.DeepEqual(want, got) {
-					t.Fatalf("unexpected replies:\n- want: %#v\n-  got: %#v",
-						want, got)
+				if len(reqs) != len(tc.want) {
+					t.Fatalf("differen length:\n- want: %#v\n- got: %#v\n", tc.want, reqs)
 				}
 
+				for i := 0; i < len(reqs); i++ {
+					if len(reqs[i].Data) != len(tc.want[i].Data) {
+						t.Fatalf("differen length:\n- want: %#v\n- got: %#v\n", tc.want[i], reqs[i])
+					}
+					if reqs[i].Header.Type != tc.want[i].Header.Type {
+						t.Fatalf("differen header types:\n- want: %#v\n- got: %#v\n", tc.want[i].Header.Type, reqs[i].Header.Type)
+					}
+					if reqs[i].Header.Flags != tc.want[i].Header.Flags {
+						t.Fatalf("differen header flags:\n- want: %#v\n- got: %#v\n", tc.want[i].Header.Flags, reqs[i].Header.Flags)
+					}
+					for j, v := range reqs[i].Data {
+						if v != tc.want[i].Data[j] {
+							t.Fatalf("unexpected reply:\n- want: %#v\n-  got: %#v", tc.want[i].Data, reqs[i].Data)
+						}
+					}
+				}
 				return nil, nil
 			})
 			defer nfct.Con.Close()
@@ -151,11 +165,26 @@ func TestCreate(t *testing.T) {
 				// To ignore the Sequence number, we set it to the same value
 				tc.want[0].Header.Sequence = reqs[0].Header.Sequence
 
-				if want, got := reqs, tc.want; !reflect.DeepEqual(want, got) {
-					t.Fatalf("unexpected replies:\n- want: %#v\n-  got: %#v",
-						want, got)
+				if len(reqs) != len(tc.want) {
+					t.Fatalf("differen length:\n- want: %#v\n- got: %#v\n", tc.want, reqs)
 				}
 
+				for i := 0; i < len(reqs); i++ {
+					if len(reqs[i].Data) != len(tc.want[i].Data) {
+						t.Fatalf("differen length:\n- want: %#v\n- got: %#v\n", tc.want[i], reqs[i])
+					}
+					if reqs[i].Header.Type != tc.want[i].Header.Type {
+						t.Fatalf("differen header types:\n- want: %#v\n- got: %#v\n", tc.want[i].Header.Type, reqs[i].Header.Type)
+					}
+					if reqs[i].Header.Flags != tc.want[i].Header.Flags {
+						t.Fatalf("differen header flags:\n- want: %#v\n- got: %#v\n", tc.want[i].Header.Flags, reqs[i].Header.Flags)
+					}
+					for j, v := range reqs[i].Data {
+						if v != tc.want[i].Data[j] {
+							t.Fatalf("unexpected reply:\n- want: %#v\n-  got: %#v", tc.want[i].Data, reqs[i].Data)
+						}
+					}
+				}
 				return nil, nil
 			})
 			defer nfct.Con.Close()
