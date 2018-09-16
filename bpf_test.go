@@ -3,7 +3,6 @@
 package conntrack
 
 import (
-	"reflect"
 	"testing"
 
 	"golang.org/x/net/bpf"
@@ -119,8 +118,13 @@ func TestConstructFilter(t *testing.T) {
 			if err != tc.err {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(rawInstr, tc.rawInstr) {
-				t.Fatalf("unexpected replies:\n- want: %#v\n-  got: %#v", tc.rawInstr, rawInstr)
+			if len(rawInstr) != len(tc.rawInstr) {
+				t.Fatalf("different length")
+			}
+			for i, v := range rawInstr {
+				if v != tc.rawInstr[i] {
+					t.Fatalf("unexpected reply:\n- want: %#v\n-  got: %#v", tc.rawInstr, rawInstr)
+				}
 			}
 
 		})
