@@ -32,14 +32,18 @@ func nestTuples(attrs []ConnAttr) ([]byte, error) {
 	var tuple netlink.Attribute
 	tuple.Type = uint16(nestingTuple) | nlafNested
 	var data []byte
-	for i, x := range subTuples {
-		tmp, err := nestSubTuple(uint16(i), x)
-		if err != nil {
-			return nil, err
+
+	// We can not simple range over the map, because the order of selected items can vary
+	for key := 0; key <= int(attrMax); key++ {
+		if x, ok := subTuples[uint32(key)]; ok {
+			tmp, err := nestSubTuple(uint16(key), x)
+			if err != nil {
+				return nil, err
+			}
+			data = append(data, tmp...)
 		}
-		data = append(data, tmp...)
+		tuple.Data = data
 	}
-	tuple.Data = data
 
 	return netlink.MarshalAttributes([]netlink.Attribute{tuple})
 }
