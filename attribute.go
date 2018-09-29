@@ -450,3 +450,45 @@ func extractAttributes(msg []byte) (Conn, error) {
 	}
 	return conn, nil
 }
+
+func extractStats(data []byte) (Conn, error) {
+	var stats = make(map[ConnAttrType][]byte)
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, attr := range attributes {
+		switch ConnAttrType(attr.Type) {
+		case CupStatsSearched:
+			stats[CupStatsSearched] = attr.Data
+		case CupStatsFound:
+			stats[CupStatsFound] = attr.Data
+		case CupStatsNew:
+			stats[CupStatsNew] = attr.Data
+		case CupStatsInvalid:
+			stats[CupStatsInvalid] = attr.Data
+		case CupStatsIgnore:
+			stats[CupStatsIgnore] = attr.Data
+		case CupStatsDelete:
+			stats[CupStatsDelete] = attr.Data
+		case CupStatsDeleteList:
+			stats[CupStatsDeleteList] = attr.Data
+		case CupStatsInsert:
+			stats[CupStatsInsert] = attr.Data
+		case CupStatsInsertFailed:
+			stats[CupStatsInsertFailed] = attr.Data
+		case CupStatsDrop:
+			stats[CupStatsDrop] = attr.Data
+		case CupStatsEarlyDrop:
+			stats[CupStatsEarlyDrop] = attr.Data
+		case CupStatsError:
+			stats[CupStatsError] = attr.Data
+		case CupStatsSearchRestart:
+			stats[CupStatsSearchRestart] = attr.Data
+		default:
+			fmt.Println(attr.Type, "\t", attr.Length, "\t", attr.Data)
+		}
+	}
+	return stats, nil
+}

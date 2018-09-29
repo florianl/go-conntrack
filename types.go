@@ -140,6 +140,24 @@ const (
 	attrMax ConnAttrType = iota /* This is for internal use only	*/
 )
 
+// Various CPU related statistics
+// based on libnetfilter_conntrack.h
+const (
+	CupStatsSearched      = ConnAttrType(1)  /* u64 bits */
+	CupStatsFound         = ConnAttrType(2)  /* u64 bits */
+	CupStatsNew           = ConnAttrType(3)  /* u64 bits */
+	CupStatsInvalid       = ConnAttrType(4)  /* u64 bits */
+	CupStatsIgnore        = ConnAttrType(5)  /* u64 bits */
+	CupStatsDelete        = ConnAttrType(6)  /* u64 bits */
+	CupStatsDeleteList    = ConnAttrType(7)  /* u64 bits */
+	CupStatsInsert        = ConnAttrType(8)  /* u64 bits */
+	CupStatsInsertFailed  = ConnAttrType(9)  /* u64 bits */
+	CupStatsDrop          = ConnAttrType(10) /* u64 bits */
+	CupStatsEarlyDrop     = ConnAttrType(11) /* u64 bits */
+	CupStatsError         = ConnAttrType(12) /* u64 bits */
+	CupStatsSearchRestart = ConnAttrType(13) /* u64 bits */
+)
+
 // Various errors which may occur when procressing a connection
 var (
 	ErrConnNoSrcIP = errors.New("Conn has no source IP")
