@@ -158,6 +158,12 @@ const (
 	CupStatsSearchRestart = ConnAttrType(13) /* u64 bits */
 )
 
+// Various types of global statistics
+const (
+	StatsGlobalEntries    = 1
+	StatsGlobalMaxEntries = 2
+)
+
 // Various errors which may occur when procressing a connection
 var (
 	ErrConnNoSrcIP = errors.New("Conn has no source IP")
@@ -171,6 +177,9 @@ var (
 	ErrAttrNotImplemented = errors.New("Attribute not implemented")
 	ErrAttrNotExist       = errors.New("Type of attribute does not exist")
 )
+
+// ErrUnknownCtTable will be return, if the function can not be performed on this subsystem
+var ErrUnknownCtTable = errors.New("Not supported for this subsystem")
 
 // OrigSrcIP returns the net.IP representation of the source IP
 func (c Conn) OrigSrcIP() (net.IP, error) {

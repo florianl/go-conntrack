@@ -457,6 +457,26 @@ func extractStats(data []byte) (Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, attr := range attributes {
+		switch ConnAttrType(attr.Type) {
+		case StatsGlobalEntries:
+			stats[StatsGlobalEntries] = attr.Data
+		case StatsGlobalMaxEntries:
+			stats[StatsGlobalMaxEntries] = attr.Data
+		default:
+			fmt.Println(attr.Type, "\t", attr.Length, "\t", attr.Data)
+		}
+
+	}
+	return stats, nil
+}
+
+func extractStatsCPU(data []byte) (Conn, error) {
+	var stats = make(map[ConnAttrType][]byte)
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, attr := range attributes {
 		switch ConnAttrType(attr.Type) {

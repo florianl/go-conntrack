@@ -31,6 +31,13 @@ const (
 	ipctnlMsgCtGetUnconfirmed = iota
 )
 
+const (
+	ipctnlMsgExpNew         = iota
+	ipctnlMsgExpGet         = iota
+	ipctnlMsgExpDelete      = iota
+	ipctnlMsgExpGetStatsCPU = iota
+)
+
 // Open a connection to the conntrack subsystem
 func Open() (*Nfct, error) {
 	var nfct Nfct
@@ -76,14 +83,39 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 }
 
 // DumpCPUStats gets statistics about the conntrack subsystem
-func (nfct *Nfct) DumpCPUStats() ([]Conn, error) {
+func (nfct *Nfct) DumpCPUStats(t CtTable) ([]Conn, error) {
 	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetStatsCPU),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
 		},
 		Data: data,
+	}
+	if t == Ct {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStatsCPU)
+	} else if t == CtExpected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGetStatsCPU)
+	} else {
+		return nil, ErrUnknownCtTable
+	}
+	return nfct.query(req)
+}
+
+// Counters returns the global counters of the subsystem
+func (nfct *Nfct) Counters(t CtTable) ([]Conn, error) {
+	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
+	req := netlink.Message{
+		Header: netlink.Header{
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+		},
+		Data: data,
+	}
+	if t == Ct {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStats)
+	} else if t == CtExpected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
+	} else {
+		return nil, ErrUnknownCtTable
 	}
 	return nfct.query(req)
 }
@@ -196,7 +228,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, f
 			}
 
 			for _, msg := range reply {
-				c, err := parseConnectionMsg(msg, int(msg.Header.Type)&0xFF)
+				c, err := parseConnectionMsg(msg, int(msg.Header.Type)&0xF)
 				if err != nil {
 					ctrl <- err
 				}
@@ -270,20 +302,15 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 
 	var conn []Conn
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg, (int(req.Header.Type) & 0xFF))
+		c, err := parseConnectionMsg(msg, (int(req.Header.Type) & 0xF))
 		if err != nil {
 			return nil, err
 		}
 		if len(c) == 0 {
-			errMsg, err := unmarschalErrMsg(msg.Data)
-			if err != nil {
-				return nil, err
-			}
-			return nil, fmt.Errorf("%#v", errMsg)
+			break
 		}
 		conn = append(conn, c)
 	}
-
 	return conn, nil
 }
 
@@ -299,6 +326,9 @@ func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
 		if err != nil {
 			return nil, err
 		}
+		if errMsg.Code == 0 {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("%#v", errMsg)
 	}
 	switch reqType {
@@ -308,13 +338,19 @@ func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
 			return nil, err
 		}
 		return conn, nil
-	case ipctnlMsgCtGetStatsCPU:
+	case ipctnlMsgCtGetStats:
 		stats, err := extractStats(msg.Data)
+		if err != nil {
+			return nil, err
+		}
+		return stats, nil
+	case ipctnlMsgCtGetStatsCPU:
+		stats, err := extractStatsCPU(msg.Data)
 		if err != nil {
 			return nil, err
 		}
 		return stats, nil
 
 	}
-	return nil, fmt.Errorf("Unknown message type: 0x%2x", reqType)
+	return nil, fmt.Errorf("Unknown message type: 0x%02x", reqType)
 }
