@@ -480,32 +480,32 @@ func extractStatsCPU(data []byte) (Conn, error) {
 
 	for _, attr := range attributes {
 		switch ConnAttrType(attr.Type) {
-		case CpuStatsSearched:
-			stats[CpuStatsSearched] = attr.Data
-		case CpuStatsFound:
-			stats[CpuStatsFound] = attr.Data
-		case CpuStatsNew:
-			stats[CpuStatsNew] = attr.Data
-		case CpuStatsInvalid:
-			stats[CpuStatsInvalid] = attr.Data
-		case CpuStatsIgnore:
-			stats[CpuStatsIgnore] = attr.Data
-		case CpuStatsDelete:
-			stats[CpuStatsDelete] = attr.Data
-		case CpuStatsDeleteList:
-			stats[CpuStatsDeleteList] = attr.Data
-		case CpuStatsInsert:
-			stats[CpuStatsInsert] = attr.Data
-		case CpuStatsInsertFailed:
-			stats[CpuStatsInsertFailed] = attr.Data
-		case CpuStatsDrop:
-			stats[CpuStatsDrop] = attr.Data
-		case CpuStatsEarlyDrop:
-			stats[CpuStatsEarlyDrop] = attr.Data
-		case CpuStatsError:
-			stats[CpuStatsError] = attr.Data
-		case CpuStatsSearchRestart:
-			stats[CpuStatsSearchRestart] = attr.Data
+		case CPUStatsSearched:
+			stats[CPUStatsSearched] = attr.Data
+		case CPUStatsFound:
+			stats[CPUStatsFound] = attr.Data
+		case CPUStatsNew:
+			stats[CPUStatsNew] = attr.Data
+		case CPUStatsInvalid:
+			stats[CPUStatsInvalid] = attr.Data
+		case CPUStatsIgnore:
+			stats[CPUStatsIgnore] = attr.Data
+		case CPUStatsDelete:
+			stats[CPUStatsDelete] = attr.Data
+		case CPUStatsDeleteList:
+			stats[CPUStatsDeleteList] = attr.Data
+		case CPUStatsInsert:
+			stats[CPUStatsInsert] = attr.Data
+		case CPUStatsInsertFailed:
+			stats[CPUStatsInsertFailed] = attr.Data
+		case CPUStatsDrop:
+			stats[CPUStatsDrop] = attr.Data
+		case CPUStatsEarlyDrop:
+			stats[CPUStatsEarlyDrop] = attr.Data
+		case CPUStatsError:
+			stats[CPUStatsError] = attr.Data
+		case CPUStatsSearchRestart:
+			stats[CPUStatsSearchRestart] = attr.Data
 		default:
 			fmt.Println(attr.Type, "\t", attr.Length, "\t", attr.Data)
 		}

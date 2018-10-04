@@ -4,6 +4,7 @@ package conntrack
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/mdlayher/netlink"
@@ -314,9 +315,10 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 	return conn, nil
 }
 
+// /include/uapi/linux/netfilter/nfnetlink.h:struct nfgenmsg{} res_id is Big Endian
 func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 	buf := make([]byte, 2)
-	nlenc.PutUint16(buf, resid)
+	binary.BigEndian.PutUint16(buf, resid)
 	return append([]byte{familiy, version}, buf...)
 }
 

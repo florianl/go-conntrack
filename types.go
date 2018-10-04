@@ -143,19 +143,19 @@ const (
 // Various CPU related statistics
 // based on libnetfilter_conntrack.h
 const (
-	CpuStatsSearched      = ConnAttrType(1)  /* u64 bits */
-	CpuStatsFound         = ConnAttrType(2)  /* u64 bits */
-	CpuStatsNew           = ConnAttrType(3)  /* u64 bits */
-	CpuStatsInvalid       = ConnAttrType(4)  /* u64 bits */
-	CpuStatsIgnore        = ConnAttrType(5)  /* u64 bits */
-	CpuStatsDelete        = ConnAttrType(6)  /* u64 bits */
-	CpuStatsDeleteList    = ConnAttrType(7)  /* u64 bits */
-	CpuStatsInsert        = ConnAttrType(8)  /* u64 bits */
-	CpuStatsInsertFailed  = ConnAttrType(9)  /* u64 bits */
-	CpuStatsDrop          = ConnAttrType(10) /* u64 bits */
-	CpuStatsEarlyDrop     = ConnAttrType(11) /* u64 bits */
-	CpuStatsError         = ConnAttrType(12) /* u64 bits */
-	CpuStatsSearchRestart = ConnAttrType(13) /* u64 bits */
+	CPUStatsSearched      = ConnAttrType(1)  /* u64 bits */
+	CPUStatsFound         = ConnAttrType(2)  /* u64 bits */
+	CPUStatsNew           = ConnAttrType(3)  /* u64 bits */
+	CPUStatsInvalid       = ConnAttrType(4)  /* u64 bits */
+	CPUStatsIgnore        = ConnAttrType(5)  /* u64 bits */
+	CPUStatsDelete        = ConnAttrType(6)  /* u64 bits */
+	CPUStatsDeleteList    = ConnAttrType(7)  /* u64 bits */
+	CPUStatsInsert        = ConnAttrType(8)  /* u64 bits */
+	CPUStatsInsertFailed  = ConnAttrType(9)  /* u64 bits */
+	CPUStatsDrop          = ConnAttrType(10) /* u64 bits */
+	CPUStatsEarlyDrop     = ConnAttrType(11) /* u64 bits */
+	CPUStatsError         = ConnAttrType(12) /* u64 bits */
+	CPUStatsSearchRestart = ConnAttrType(13) /* u64 bits */
 )
 
 // Various types of global statistics
