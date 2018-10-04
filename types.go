@@ -143,19 +143,19 @@ const (
 // Various CPU related statistics
 // based on libnetfilter_conntrack.h
 const (
-	CupStatsSearched      = ConnAttrType(1)  /* u64 bits */
-	CupStatsFound         = ConnAttrType(2)  /* u64 bits */
-	CupStatsNew           = ConnAttrType(3)  /* u64 bits */
-	CupStatsInvalid       = ConnAttrType(4)  /* u64 bits */
-	CupStatsIgnore        = ConnAttrType(5)  /* u64 bits */
-	CupStatsDelete        = ConnAttrType(6)  /* u64 bits */
-	CupStatsDeleteList    = ConnAttrType(7)  /* u64 bits */
-	CupStatsInsert        = ConnAttrType(8)  /* u64 bits */
-	CupStatsInsertFailed  = ConnAttrType(9)  /* u64 bits */
-	CupStatsDrop          = ConnAttrType(10) /* u64 bits */
-	CupStatsEarlyDrop     = ConnAttrType(11) /* u64 bits */
-	CupStatsError         = ConnAttrType(12) /* u64 bits */
-	CupStatsSearchRestart = ConnAttrType(13) /* u64 bits */
+	CpuStatsSearched      = ConnAttrType(1)  /* u64 bits */
+	CpuStatsFound         = ConnAttrType(2)  /* u64 bits */
+	CpuStatsNew           = ConnAttrType(3)  /* u64 bits */
+	CpuStatsInvalid       = ConnAttrType(4)  /* u64 bits */
+	CpuStatsIgnore        = ConnAttrType(5)  /* u64 bits */
+	CpuStatsDelete        = ConnAttrType(6)  /* u64 bits */
+	CpuStatsDeleteList    = ConnAttrType(7)  /* u64 bits */
+	CpuStatsInsert        = ConnAttrType(8)  /* u64 bits */
+	CpuStatsInsertFailed  = ConnAttrType(9)  /* u64 bits */
+	CpuStatsDrop          = ConnAttrType(10) /* u64 bits */
+	CpuStatsEarlyDrop     = ConnAttrType(11) /* u64 bits */
+	CpuStatsError         = ConnAttrType(12) /* u64 bits */
+	CpuStatsSearchRestart = ConnAttrType(13) /* u64 bits */
 )
 
 // Various types of global statistics
