@@ -303,7 +303,7 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 
 	var conn []Conn
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg, (int(req.Header.Type) & 0xF))
+		c, err := parseConnectionMsg(msg, int(req.Header.Type)&0xF)
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +333,12 @@ func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
 		}
 		return nil, fmt.Errorf("%#v", errMsg)
 	}
+
 	switch reqType {
+	case ipctnlMsgCtNew:
+		fallthrough
+	case ipctnlMsgCtDelete:
+		fallthrough
 	case ipctnlMsgCtGet:
 		conn, err := extractAttributes(msg.Data)
 		if err != nil {
