@@ -322,6 +322,8 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 	return append([]byte{familiy, version}, buf...)
 }
 
+type extractFunc func([]byte) (Conn, error)
+
 func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
 	if msg.Header.Type&netlink.HeaderTypeError == netlink.HeaderTypeError {
 		errMsg, err := unmarschalErrMsg(msg.Data)
@@ -334,30 +336,17 @@ func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
 		return nil, fmt.Errorf("%#v", errMsg)
 	}
 
-	switch reqType {
-	case ipctnlMsgCtNew:
-		fallthrough
-	case ipctnlMsgCtDelete:
-		fallthrough
-	case ipctnlMsgCtGet:
-		conn, err := extractAttributes(msg.Data)
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	case ipctnlMsgCtGetStats:
-		stats, err := extractStats(msg.Data)
-		if err != nil {
-			return nil, err
-		}
-		return stats, nil
-	case ipctnlMsgCtGetStatsCPU:
-		stats, err := extractStatsCPU(msg.Data)
-		if err != nil {
-			return nil, err
-		}
-		return stats, nil
-
+	fnMap := map[int]extractFunc{
+		ipctnlMsgCtNew:         extractAttributes,
+		ipctnlMsgCtGet:         extractAttributes,
+		ipctnlMsgCtDelete:      extractAttributes,
+		ipctnlMsgCtGetStats:    extractStats,
+		ipctnlMsgCtGetStatsCPU: extractStatsCPU,
 	}
+
+	if fn, ok := fnMap[reqType]; ok {
+		return fn(msg.Data)
+	}
+
 	return nil, fmt.Errorf("Unknown message type: 0x%02x", reqType)
 }
