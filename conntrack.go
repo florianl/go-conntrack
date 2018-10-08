@@ -62,11 +62,19 @@ func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtDelete),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
 	}
+
+	if t == Ct {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtDelete)
+	} else if t == CtExpected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpDelete)
+	} else {
+		return ErrUnknownCtTable
+	}
+
 	return nfct.execute(req)
 }
 
@@ -75,11 +83,19 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
 		},
 		Data: data,
 	}
+
+	if t == Ct {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
+	} else if t == CtExpected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
+	} else {
+		return nil, ErrUnknownCtTable
+	}
+
 	return nfct.query(req)
 }
 
@@ -113,8 +129,6 @@ func (nfct *Nfct) Counters(t CtTable) ([]Conn, error) {
 	}
 	if t == Ct {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStats)
-	} else if t == CtExpected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
 	} else {
 		return nil, ErrUnknownCtTable
 	}
@@ -123,6 +137,10 @@ func (nfct *Nfct) Counters(t CtTable) ([]Conn, error) {
 
 // Create a new entrie in the conntrack subsystem with certain attributes
 func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
+	if t != Ct {
+		return ErrUnknownCtTable
+	}
+
 	query, err := nestAttributes(attributes)
 	if err != nil {
 		return err
@@ -151,11 +169,19 @@ func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtDelete),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
 	}
+
+	if t == Ct {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtDelete)
+	} else if t == CtExpected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpDelete)
+	} else {
+		return ErrUnknownCtTable
+	}
+
 	return nfct.execute(req)
 }
 
@@ -174,6 +200,14 @@ func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
 		},
 		Data: data,
+	}
+
+	if t == Ct {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
+	} else if t == CtExpected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
+	} else {
+		return nil, ErrUnknownCtTable
 	}
 	return nfct.query(req)
 }
