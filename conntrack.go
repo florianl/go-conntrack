@@ -78,6 +78,32 @@ func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 	return nfct.execute(req)
 }
 
+// DumpDying returns connections marked as dying
+func (nfct *Nfct) DumpDying(f CtFamily) ([]Conn, error) {
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetDying),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+		},
+		Data: data,
+	}
+	return nfct.query(req)
+}
+
+// DumpUnconfirmed returns connections marked as unconfirmed
+func (nfct *Nfct) DumpUnconfirmed(f CtFamily) ([]Conn, error) {
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetUnconfirmed),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+		},
+		Data: data,
+	}
+	return nfct.query(req)
+}
+
 // Dump a conntrack subsystem
 func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
