@@ -27,6 +27,23 @@ const (
 	ctaExpectNATTuple  = iota
 )
 
+func extractExpectTuple(expect Conn, offset int, data []byte) error {
+	attributes, err := netlink.UnmarshalAttributes(data)
+	if err != nil {
+		return err
+	}
+	for _, attr := range attributes {
+		switch attr.Type {
+		case ctaTupleIP + nlafNested:
+		case ctaTupleProto + nlafNested:
+		case ctaTupleZone + nlafNested:
+		default:
+			return fmt.Errorf("Tuple %d is not yet implemented", attr.Type)
+		}
+	}
+	return nil
+}
+
 func extractExpectAttribute(expect Conn, data []byte) error {
 	attributes, err := netlink.UnmarshalAttributes(data)
 	if err != nil {
@@ -34,12 +51,18 @@ func extractExpectAttribute(expect Conn, data []byte) error {
 	}
 	for _, attr := range attributes {
 		switch attr.Type & 0xFF {
+		case ctaExpMask:
+			if err := extractExpectTuple(expect, 0, attr.Data); err != nil {
+				return err
+			}
 		case ctaExpTimeout:
 			expect[AttrTimeout] = attr.Data
 		case ctaExpHelpName:
 			expect[AttrHelperName] = attr.Data
 		case ctaExpZone:
 			expect[AttrZone] = attr.Data
+		case ctaExpFN:
+			expect[AttrHelperInfo] = attr.Data
 		default:
 			fmt.Println(attr.Type&0xFF, "\t", attr.Length, "\t", attr.Data)
 		}
