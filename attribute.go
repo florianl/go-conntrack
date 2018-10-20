@@ -110,6 +110,12 @@ const (
 	ctaSeqAdjOffsetAfter  = 3
 )
 
+const (
+	dirOrig   = iota
+	dirReply  = iota
+	dirMaster = iota
+)
+
 const nlafNested = (1 << 15)
 
 func checkHeader(data []byte) int {
@@ -207,17 +213,16 @@ func extractProtocolTuple(conn Conn, dir int, data []byte) error {
 		return err
 	}
 	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
+		switch attr.Type {
 		case ctaProtoNum:
-			if dir == -1 {
-				conn[AttrOrigL4Proto] = attr.Data
-			} else {
-				conn[AttrReplL4Proto] = attr.Data
-			}
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigL4Proto, dirReply: AttrReplL4Proto, dirMaster: AttrMasterL4Proto}[dir]
+			conn[eleType] = attr.Data
 		case ctaProtoSrcPort:
-			conn[ConnAttrType(ctaProtoSrcPort+dir+8)] = attr.Data
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigPortSrc, dirReply: AttrReplPortSrc, dirMaster: AttrMasterPortSrc}[dir]
+			conn[eleType] = attr.Data
 		case ctaProtoDstPort:
-			conn[ConnAttrType(ctaProtoDstPort+dir+8)] = attr.Data
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigPortDst, dirReply: AttrReplPortDst, dirMaster: AttrMasterPortDst}[dir]
+			conn[eleType] = attr.Data
 		case ctaProtoIcmpID:
 			conn[AttrIcmpID] = attr.Data
 		case ctaProtoIcmpType:
@@ -230,6 +235,8 @@ func extractProtocolTuple(conn Conn, dir int, data []byte) error {
 			conn[AttrIcmpCode] = attr.Data
 		case ctaProtoIcmpv6Code:
 			conn[AttrIcmpCode] = attr.Data
+		default:
+			fmt.Printf("Tuple %d is not yet implemented: %v\n", attr.Type, attr.Data)
 		}
 	}
 	return nil
@@ -241,25 +248,27 @@ func extractIPTuple(conn Conn, dir int, data []byte) error {
 		return err
 	}
 	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
+		switch attr.Type {
 		case ctaIPv4Src:
-			conn[ConnAttrType(ctaIPv4Src+dir)] = attr.Data
-			if dir == -1 {
-				conn[AttrOrigL3Proto] = []byte{byte(unix.AF_INET)}
-			} else {
-				conn[AttrReplL3Proto] = []byte{byte(unix.AF_INET)}
-			}
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv4Src, dirReply: AttrReplIPv4Src, dirMaster: AttrMasterIPv4Src}[dir]
+			conn[eleType] = attr.Data
+
+			eleType = map[int]ConnAttrType{dirOrig: AttrOrigL3Proto, dirReply: AttrReplL3Proto, dirMaster: AttrMasterL3Proto}[dir]
+			conn[eleType] = []byte{byte(unix.AF_INET)}
 		case ctaIPv4Dst:
-			conn[ConnAttrType(ctaIPv4Dst+dir)] = attr.Data
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv4Dst, dirReply: AttrReplIPv4Dst, dirMaster: AttrMasterIPv4Dst}[dir]
+			conn[eleType] = attr.Data
 		case ctaIPv6Src:
-			if dir == -1 {
-				conn[AttrOrigL3Proto] = []byte{byte(unix.AF_INET6)}
-			} else {
-				conn[AttrReplL3Proto] = []byte{byte(unix.AF_INET6)}
-			}
-			conn[ConnAttrType(ctaIPv6Src+dir+2)] = attr.Data
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv6Src, dirReply: AttrReplIPv6Src, dirMaster: AttrMasterIPv6Src}[dir]
+			conn[eleType] = attr.Data
+
+			eleType = map[int]ConnAttrType{dirOrig: AttrOrigL3Proto, dirReply: AttrReplL3Proto, dirMaster: AttrMasterL3Proto}[dir]
+			conn[eleType] = []byte{byte(unix.AF_INET6)}
 		case ctaIPv6Dst:
-			conn[ConnAttrType(ctaIPv6Dst+dir+2)] = attr.Data
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv6Dst, dirReply: AttrReplIPv6Dst, dirMaster: AttrMasterIPv6Dst}[dir]
+			conn[eleType] = attr.Data
+		default:
+			fmt.Printf("Tuple %d is not yet implemented: %v\n", attr.Type, attr.Data)
 		}
 	}
 	return nil
@@ -271,18 +280,20 @@ func extractTuple(conn Conn, dir int, data []byte) error {
 		return err
 	}
 	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaTupleIP:
+		switch attr.Type {
+		case ctaTupleIP + nlafNested:
 			if err := extractIPTuple(conn, dir, attr.Data); err != nil {
 				return err
 			}
-		case ctaTupleProto:
+		case ctaTupleProto + nlafNested:
 			if err := extractProtocolTuple(conn, dir, attr.Data); err != nil {
 				return err
 			}
 		case ctaTupleZone:
-			return fmt.Errorf("ctaTupleZone not yet implemented")
-
+			eleType := map[int]ConnAttrType{dirOrig: AttrOrigzone, dirReply: AttrReplzone}[dir]
+			conn[eleType] = attr.Data
+		default:
+			fmt.Printf("Tuple %d is not yet implemented: %v\n", attr.Type, attr.Data)
 		}
 	}
 	return nil
@@ -375,11 +386,11 @@ func extractAttribute(conn Conn, data []byte) error {
 	for _, attr := range attributes {
 		switch attr.Type & 0xFF {
 		case ctaTupleOrig:
-			if err := extractTuple(conn, -1, attr.Data); err != nil {
+			if err := extractTuple(conn, dirOrig, attr.Data); err != nil {
 				return err
 			}
 		case ctaTupleReply:
-			if err := extractTuple(conn, 1, attr.Data); err != nil {
+			if err := extractTuple(conn, dirReply, attr.Data); err != nil {
 				return err
 			}
 		case ctaProtoinfo:
