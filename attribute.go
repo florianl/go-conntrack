@@ -489,6 +489,9 @@ func extractStatsCPU(data []byte) (Conn, error) {
 		return nil, err
 	}
 
+	// The CPU identifier is hidden in the first four bytes
+	stats[CPUID] = data[0:4]
+
 	for _, attr := range attributes {
 		switch ConnAttrType(attr.Type) {
 		case CPUStatsSearched:

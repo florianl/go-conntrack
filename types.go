@@ -143,6 +143,7 @@ const (
 // Various CPU related statistics
 // based on libnetfilter_conntrack.h
 const (
+	CPUID                 = ConnAttrType(0)
 	CPUStatsSearched      = ConnAttrType(1)  /* u64 bits */
 	CPUStatsFound         = ConnAttrType(2)  /* u64 bits */
 	CPUStatsNew           = ConnAttrType(3)  /* u64 bits */
