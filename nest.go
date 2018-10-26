@@ -63,39 +63,14 @@ func nestAttributes(filters []ConnAttr) ([]byte, error) {
 		if len(filter.Data) != filterCheck[filter.Type].len {
 			return nil, ErrAttrLength
 		}
-		if filter.Type == AttrOrigIPv4Src ||
-			filter.Type == AttrOrigIPv4Dst ||
-			filter.Type == AttrOrigIPv6Src ||
-			filter.Type == AttrOrigIPv6Dst ||
-			filter.Type == AttrOrigPortSrc ||
-			filter.Type == AttrOrigPortDst ||
-			filter.Type == AttrIcmpType ||
-			filter.Type == AttrIcmpCode ||
-			filter.Type == AttrIcmpID {
+		switch filter.Type {
+		case AttrOrigIPv4Src, AttrOrigIPv4Dst, AttrOrigIPv6Src, AttrOrigIPv6Dst, AttrOrigPortSrc, AttrOrigPortDst, AttrIcmpType, AttrIcmpCode, AttrIcmpID:
 			tupleOrig = append(tupleOrig, filter)
-		} else if filter.Type == AttrReplIPv4Src ||
-			filter.Type == AttrReplIPv4Dst ||
-			filter.Type == AttrReplIPv6Src ||
-			filter.Type == AttrReplIPv6Dst ||
-			filter.Type == AttrReplPortSrc ||
-			filter.Type == AttrReplPortDst ||
-			filter.Type == AttrIcmpType ||
-			filter.Type == AttrIcmpCode ||
-			filter.Type == AttrIcmpID {
+		case AttrReplIPv4Src, AttrReplIPv4Dst, AttrReplIPv6Src, AttrReplIPv6Dst, AttrReplPortSrc, AttrReplPortDst:
 			tupleRepl = append(tupleRepl, filter)
-		} else if filter.Type == AttrTCPFlagsOrig ||
-			filter.Type == AttrTCPFlagsRepl ||
-			filter.Type == AttrTCPState ||
-			filter.Type == AttrTCPWScaleOrig ||
-			filter.Type == AttrTCPWScaleRepl ||
-			filter.Type == AttrSctpState ||
-			filter.Type == AttrSctpVtagOrig ||
-			filter.Type == AttrSctpVtagRepl ||
-			filter.Type == AttrDccpState ||
-			filter.Type == AttrDccpRole ||
-			filter.Type == AttrDccpHandshakeSeq {
+		case AttrTCPFlagsOrig, AttrTCPFlagsRepl, AttrTCPState, AttrTCPWScaleOrig, AttrTCPWScaleRepl, AttrSctpState, AttrSctpVtagOrig, AttrSctpVtagRepl, AttrDccpState, AttrDccpRole, AttrDccpHandshakeSeq:
 			tupleProto = append(tupleProto)
-		} else {
+		default:
 			attrs = append(attrs, netlink.Attribute{Type: uint16(filterCheck[filter.Type].ct), Data: filter.Data})
 		}
 	}

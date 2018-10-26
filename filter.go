@@ -22,7 +22,7 @@ func nestFilter(filter FilterAttr) ([]byte, error) {
 	if len(filter.MarkMask) != 4 {
 		return nil, ErrFilterAttrLength
 	}
-	attrs = append(attrs, netlink.Attribute{Type: ctaMark, Data: filter.Mark})
-	attrs = append(attrs, netlink.Attribute{Type: ctaMarkMask, Data: filter.MarkMask})
+	attrs = append(attrs, netlink.Attribute{Type: ctaMark, Data: filter.Mark}, netlink.Attribute{Type: ctaMarkMask, Data: filter.MarkMask})
+
 	return netlink.MarshalAttributes(attrs)
 }
