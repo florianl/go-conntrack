@@ -138,6 +138,12 @@ const (
 	AttrDNatIPv6                ConnAttrType = iota /* u128 bits */
 
 	attrMax ConnAttrType = iota /* This is for internal use only	*/
+
+	AttrExpID     ConnAttrType = iota /* u32 bits */
+	AttrExpFlags  ConnAttrType = iota /* u32 bits */
+	AttrExpClass  ConnAttrType = iota /* u32 bits */
+	AttrExpNATDir ConnAttrType = iota /* u32 bits */
+
 )
 
 // Various CPU related statistics
