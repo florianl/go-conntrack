@@ -161,7 +161,7 @@ func (nfct *Nfct) Counters(t CtTable) ([]Conn, error) {
 	return nfct.query(req)
 }
 
-// Create a new entrie in the conntrack subsystem with certain attributes
+// Create a new entry in the conntrack subsystem with certain attributes
 func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
 	if t != Ct {
 		return ErrUnknownCtTable
@@ -178,6 +178,29 @@ func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
 			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsCreate | netlink.HeaderFlagsExcl,
+		},
+		Data: data,
+	}
+	return nfct.execute(req)
+}
+
+// Update an existing conntrack entry
+func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error {
+	if t != Ct {
+		return ErrUnknownCtTable
+	}
+
+	query, err := nestAttributes(attributes)
+	if err != nil {
+		return err
+	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
+
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsReplace,
 		},
 		Data: data,
 	}
