@@ -261,6 +261,29 @@ func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error
 	return nfct.query(req)
 }
 
+// Get returns matching conntrack entries with certain attributes
+func (nfct *Nfct) Get(t CtTable, f CtFamily, attributes []ConnAttr) ([]Conn, error) {
+	if t != Ct {
+		return nil, ErrUnknownCtTable
+	}
+
+	query, err := nestAttributes(attributes)
+	if err != nil {
+		return nil, err
+	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
+
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsMatch,
+		},
+		Data: data,
+	}
+	return nfct.query(req)
+}
+
 // HookFunc is a function, that receives events from a Netlinkgroup.
 // Return something different than 0, to stop receiving messages.
 type HookFunc func(c Conn) int
