@@ -183,6 +183,7 @@ var (
 	ErrAttrLength         = errors.New("Incorrect length of attribute")
 	ErrAttrNotImplemented = errors.New("Attribute not implemented")
 	ErrAttrNotExist       = errors.New("Type of attribute does not exist")
+	ErrDataLength         = errors.New("Incorrect length of provided data")
 )
 
 // ErrUnknownCtTable will be return, if the function can not be performed on this subsystem

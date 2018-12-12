@@ -284,6 +284,15 @@ func (nfct *Nfct) Get(t CtTable, f CtFamily, attributes []ConnAttr) ([]Conn, err
 	return nfct.query(req)
 }
 
+// ParseAttributes extracts all the attributes from the given data
+func ParseAttributes(data []byte) (Conn, error) {
+	// At least 2 bytes are needed for the header check
+	if len(data) < 2 {
+		return nil, ErrDataLength
+	}
+	return extractAttributes(data)
+}
+
 // HookFunc is a function, that receives events from a Netlinkgroup.
 // Return something different than 0, to stop receiving messages.
 type HookFunc func(c Conn) int

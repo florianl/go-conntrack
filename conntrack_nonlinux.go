@@ -45,3 +45,12 @@ func (nfct *Nfct) Register(_ context.Context, _ CtTable, _ NetlinkGroup, _ func(
 func (nfct *Nfct) RegisterFiltered(_ context.Context, _ CtTable, _ NetlinkGroup, _ []ConnAttr, _ func(c Conn) int) (<-chan error, error) {
 	return nil, ErrNotLinux
 }
+
+// ParseAttributes extracts all the attributes from the given data
+func ParseAttributes(data []byte) (Conn, error) {
+	// At least 2 bytes are needed for the header check
+	if len(data) < 2 {
+		return nil, ErrDataLength
+	}
+	return extractAttributes(data)
+}
