@@ -1,0 +1,6 @@
+github.com/mdlayher/netlink v0.0.0-20181210160939-e069752bc835 h1:WpZONc7LNdfPrld0YIt2aOiy9T66FfRCqZDrsDkWJX0=
+github.com/mdlayher/netlink v0.0.0-20181210160939-e069752bc835/go.mod h1:a3TlQHkJH2m32RF224Z7LhD5N4mpyR8eUbCoYHywrwg=
+golang.org/x/net v0.0.0-20181207154023-610586996380 h1:zPQexyRtNYBc7bcHmehl1dH6TB3qn8zytv8cBGLDNY0=
+golang.org/x/net v0.0.0-20181207154023-610586996380/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
+golang.org/x/sys v0.0.0-20181212120007-b05ddf57801d h1:G59MrP9Qg6bymPjN3yGmqnmuCEH1h0eFP8zpRpl1RiU=
+golang.org/x/sys v0.0.0-20181212120007-b05ddf57801d/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
