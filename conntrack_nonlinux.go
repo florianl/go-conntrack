@@ -47,10 +47,7 @@ func (nfct *Nfct) RegisterFiltered(_ context.Context, _ CtTable, _ NetlinkGroup,
 }
 
 // ParseAttributes extracts all the attributes from the given data
-func ParseAttributes(data []byte) (Conn, error) {
-	// At least 2 bytes are needed for the header check
-	if len(data) < 2 {
-		return nil, ErrDataLength
-	}
-	return extractAttributes(data)
-}
+func ParseAttributes(_ []byte) (Conn, error) { return nil, ErrNotLinux }
+
+// Update an existing conntrack entry
+func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error { return ErrNotLinux }
