@@ -277,7 +277,7 @@ func (nfct *Nfct) Get(t CtTable, f CtFamily, attributes []ConnAttr) ([]Conn, err
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsMatch,
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
 	}
