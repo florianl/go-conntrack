@@ -85,6 +85,7 @@ var filterCheck = map[ConnAttrType]filterCheckStruct{
 	AttrDNatPort:                {ct: ctaUnspec},
 	AttrTimeout:                 {ct: ctaTimeout, len: 4},
 	AttrMark:                    {ct: ctaMark, len: 4, mask: true},
+	AttrMarkMask:                {ct: ctaMarkMask, len: 4},
 	AttrOrigCounterPackets:      {ct: ctaCounterPackets, len: 8, nest: []uint32{ctaCountersOrig}},
 	AttrReplCounterPackets:      {ct: ctaCounterPackets, len: 8, nest: []uint32{ctaCountersReply}},
 	AttrOrigCounterBytes:        {ct: ctaCounterBytes, len: 8, nest: []uint32{ctaCountersOrig}},

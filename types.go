@@ -90,6 +90,7 @@ const (
 	AttrDNatPort                ConnAttrType = iota /* u16 bits */
 	AttrTimeout                 ConnAttrType = iota /* u32 bits */
 	AttrMark                    ConnAttrType = iota /* u32 bits, requires a mask if applied as filter */
+	AttrMarkMask                ConnAttrType = iota /* u32 bits */
 	AttrOrigCounterPackets      ConnAttrType = iota /* u64 bits */
 	AttrReplCounterPackets      ConnAttrType = iota /* u64 bits */
 	AttrOrigCounterBytes        ConnAttrType = iota /* u64 bits */
