@@ -200,7 +200,7 @@ func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsReplace,
+			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
 		},
 		Data: data,
 	}
