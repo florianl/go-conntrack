@@ -311,8 +311,8 @@ func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group Netlink
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
-func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
-	if err := nfct.Con.JoinGroup(uint32(group)); err != nil {
+func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
+	if err := nfct.manageGroups(t, uint32(groups), true); err != nil {
 		return nil, err
 	}
 	if err := nfct.attachFilter(t, filter); err != nil {
@@ -324,7 +324,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, f
 			if err := nfct.removeFilter(); err != nil {
 				ctrl <- err
 			}
-			if err := nfct.Con.LeaveGroup(uint32(group)); err != nil {
+			if err := nfct.manageGroups(t, uint32(groups), false); err != nil {
 				ctrl <- err
 			}
 			close(ctrl)
@@ -356,6 +356,38 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, group NetlinkGroup, f
 		}
 	}()
 	return ctrl, nil
+}
+
+func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
+	var manage func(group uint32) error
+
+	if join == true {
+		manage = nfct.Con.JoinGroup
+	} else {
+		manage = nfct.Con.LeaveGroup
+	}
+
+	switch t {
+	case Ct:
+		for _, v := range []NetlinkGroup{NetlinkCtNew, NetlinkCtUpdate, NetlinkCtDestroy} {
+			if groups&uint32(v) == uint32(v) {
+				if err := manage(groups & uint32(v)); err != nil {
+					return err
+				}
+			}
+		}
+	case CtExpected:
+		for _, v := range []NetlinkGroup{NetlinkCtExpectedNew, NetlinkCtExpectedUpdate, NetlinkCtExpectedDestroy} {
+			if groups&uint32(v) == uint32(v) {
+				if err := manage(groups & uint32(v)); err != nil {
+					return err
+				}
+			}
+		}
+	default:
+		return ErrUnknownCtTable
+	}
+	return nil
 }
 
 // ErrMsg as defined in nlmsgerr
