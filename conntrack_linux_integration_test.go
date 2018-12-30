@@ -29,6 +29,7 @@ func compare(a, b []byte) int {
 }
 
 func TestLinuxConntrackUpdatePing(t *testing.T) {
+	// ping is needed to create a session, we can work with
 	_, err := exec.LookPath("ping")
 	if err != nil {
 		t.Fatalf("Could not find ping binary")
