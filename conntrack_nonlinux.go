@@ -52,6 +52,9 @@ func ParseAttributes(_ []byte) (Conn, error) { return nil, ErrNotLinux }
 // Update an existing conntrack entry
 func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error { return ErrNotLinux }
 
+// Delete elements from the conntrack subsystem with certain attributes
+func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error { return ErrNotLinux }
+
 // Get returns matching conntrack entries with certain attributes
 func (nfct *Nfct) Get(_ CtTable, _ CtFamily, _ []ConnAttr) ([]Conn, error) {
 	return nil, ErrNotLinux
