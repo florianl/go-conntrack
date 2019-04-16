@@ -23,7 +23,7 @@ func TestFlush(t *testing.T) {
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
 					Type: netlink.HeaderType(1<<8 | 2),
 					// NLM_F_REQUEST|NLM_F_ACK
-					Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+					Flags: netlink.Request | netlink.Acknowledge,
 					// Can and will be ignored
 					Sequence: 0,
 					// Can and will be ignored
@@ -41,7 +41,7 @@ func TestFlush(t *testing.T) {
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
 					Type: netlink.HeaderType(1<<8 | 2),
 					// NLM_F_REQUEST|NLM_F_ACK
-					Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+					Flags: netlink.Request | netlink.Acknowledge,
 					// Can and will be ignored
 					Sequence: 0,
 					// Can and will be ignored
@@ -114,7 +114,7 @@ func TestCreate(t *testing.T) {
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_NEW
 					Type: netlink.HeaderType(1<<8 | 0),
 					// NLM_F_REQUEST|NLM_F_CREATE|NLM_F_ACK|NLM_F_EXCL
-					Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsCreate | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsExcl,
+					Flags: netlink.Request | netlink.Create | netlink.Acknowledge | netlink.Excl,
 					// Can and will be ignored
 					Sequence: 0,
 					// Can and will be ignored
@@ -140,7 +140,7 @@ func TestCreate(t *testing.T) {
 					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_NEW
 					Type: netlink.HeaderType(1<<8 | 0),
 					// NLM_F_REQUEST|NLM_F_CREATE|NLM_F_ACK|NLM_F_EXCL
-					Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsCreate | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsExcl,
+					Flags: netlink.Request | netlink.Create | netlink.Acknowledge | netlink.Excl,
 					// Can and will be ignored
 					Sequence: 0,
 					// Can and will be ignored

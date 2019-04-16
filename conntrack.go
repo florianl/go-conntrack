@@ -62,7 +62,7 @@ func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
@@ -84,7 +84,7 @@ func (nfct *Nfct) DumpDying(f CtFamily) ([]Conn, error) {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetDying),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
@@ -97,7 +97,7 @@ func (nfct *Nfct) DumpUnconfirmed(f CtFamily) ([]Conn, error) {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetUnconfirmed),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
@@ -109,7 +109,7 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
@@ -130,7 +130,7 @@ func (nfct *Nfct) DumpCPUStats(t CtTable) ([]Conn, error) {
 	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
@@ -149,7 +149,7 @@ func (nfct *Nfct) Counters(t CtTable) ([]Conn, error) {
 	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
@@ -177,7 +177,7 @@ func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge | netlink.HeaderFlagsCreate | netlink.HeaderFlagsExcl,
+			Flags: netlink.Request | netlink.Acknowledge | netlink.Create | netlink.Excl,
 		},
 		Data: data,
 	}
@@ -200,7 +200,7 @@ func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error {
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
@@ -218,7 +218,7 @@ func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
@@ -246,7 +246,7 @@ func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump,
+			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
@@ -277,7 +277,7 @@ func (nfct *Nfct) Get(t CtTable, f CtFamily, attributes []ConnAttr) ([]Conn, err
 	req := netlink.Message{
 		Header: netlink.Header{
 			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
-			Flags: netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge,
+			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
@@ -472,7 +472,7 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 type extractFunc func([]byte) (Conn, error)
 
 func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
-	if msg.Header.Type&netlink.HeaderTypeError == netlink.HeaderTypeError {
+	if msg.Header.Type&netlink.Error == netlink.Error {
 		errMsg, err := unmarschalErrMsg(msg.Data)
 		if err != nil {
 			return nil, err
