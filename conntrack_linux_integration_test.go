@@ -105,3 +105,68 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 		t.Fatalf("Mark has not been updated")
 	}
 }
+
+func TestLinuxConntrackDeleteEntry(t *testing.T) {
+	// ping is needed to create a session, we can work with
+	_, err := exec.LookPath("ping")
+	if err != nil {
+		t.Fatalf("Could not find ping binary")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// Create a session
+	cmd := exec.CommandContext(ctx, "ping", "-i 2", "127.0.0.4")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Could not start ping to 127.0.0.4: %v", err)
+	}
+	defer cancel()
+
+	// Give the kernel some time, to track the session
+	time.Sleep(3 * time.Second)
+
+	nfct, err := Open()
+	if err != nil {
+		t.Fatalf("Could not open socket: %v", err)
+	}
+	defer nfct.Close()
+
+	conns, err := nfct.Dump(Ct, CtIPv4)
+	if err != nil {
+		t.Fatalf("Could not dump sessions: %v", err)
+	}
+
+	origSessID := []byte{}
+
+	for _, c := range conns {
+		if compare(c[AttrOrigIPv4Dst], []byte{127, 0, 0, 4}) == 0 {
+			sess := []ConnAttr{
+				{Type: AttrOrigIPv4Dst, Data: c[AttrOrigIPv4Dst]},
+				{Type: AttrOrigIPv4Src, Data: c[AttrOrigIPv4Src]},
+				{Type: AttrOrigL4Proto, Data: c[AttrOrigL4Proto]},
+				{Type: AttrIcmpType, Data: []byte{8}},
+				{Type: AttrIcmpCode, Data: []byte{0}},
+				{Type: AttrIcmpID, Data: c[AttrIcmpID]},
+			}
+			origSessID = c[AttrID]
+			if err := nfct.Delete(Ct, CtIPv4, sess); err != nil {
+				t.Fatalf("Could not delete session: %v", err)
+			}
+			break
+		}
+	}
+
+	// there will be a session for the ping, as it is still running.
+	// But as we deleted the original session, there has to be a new AttrID
+	conns2, err2 := nfct.Dump(Ct, CtIPv4)
+	if err2 != nil {
+		t.Fatalf("Could not dump sessions: %v", err)
+	}
+
+	for _, c := range conns2 {
+		if compare(c[AttrOrigIPv4Dst], []byte{127, 0, 0, 4}) == 0 {
+			if compare(c[AttrID], origSessID) == 0 {
+				t.Fatalf("Original ping session was not deleted")
+			}
+		}
+	}
+}
