@@ -19,7 +19,7 @@ const (
 var ErrNotLinux = errors.New("package requires the netfilter subsystem of the linux kernel")
 
 // Open returns an error, as this packages highly depends on the netfilter subsystem of the linux kernel
-func Open() (*Nfct, error) { return nil, ErrNotLinux }
+func Open(_ *Config) (*Nfct, error) { return nil, ErrNotLinux }
 
 // Close returns an error, as this packages highly depends on the netfilter subsystem of the linux kernel
 func (nfct *Nfct) Close() error { return ErrNotLinux }

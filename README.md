@@ -16,7 +16,7 @@ import (
 
 func main() {
     // Opens the socket for the communication with the subsystem
-    nfct, err := ct.Open()
+    nfct, err := ct.Open(&ct.Config{})
     if err != nil {
         fmt.Println("Could not open socket:", err)
         return

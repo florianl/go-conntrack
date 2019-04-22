@@ -10,7 +10,7 @@ func TestOthersUnimplemented(t *testing.T) {
 
 	nfct := &ct.Nfct{}
 
-	if _, got := ct.Open(); want != got {
+	if _, got := ct.Open(&ct.Config{}); want != got {
 		t.Fatalf("unexpected error during Open:\n- want: %v\n-  got: %v", want, got)
 	}
 
