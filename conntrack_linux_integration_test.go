@@ -46,7 +46,7 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 	// Give the kernel some time, to track the session
 	time.Sleep(2 * time.Second)
 
-	nfct, err := Open()
+	nfct, err := Open(nil)
 	if err != nil {
 		t.Fatalf("Could not open socket: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestLinuxConntrackDeleteEntry(t *testing.T) {
 	// Give the kernel some time, to track the session
 	time.Sleep(3 * time.Second)
 
-	nfct, err := Open()
+	nfct, err := Open(nil)
 	if err != nil {
 		t.Fatalf("Could not open socket: %v", err)
 	}
