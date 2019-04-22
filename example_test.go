@@ -10,7 +10,7 @@ import (
 )
 
 func ExampleNfct_Dump() {
-	nfct, err := ct.Open()
+	nfct, err := ct.Open(nil)
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -30,7 +30,7 @@ func ExampleNfct_Dump() {
 }
 
 func ExampleNfct_Flush() {
-	nfct, err := ct.Open()
+	nfct, err := ct.Open(nil)
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -44,7 +44,7 @@ func ExampleNfct_Flush() {
 }
 
 func ExampleNfct_Create() {
-	nfct, err := ct.Open()
+	nfct, err := ct.Open(nil)
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -68,7 +68,7 @@ func ExampleNfct_Create() {
 }
 
 func ExampleNfct_Query() {
-	nfct, err := ct.Open()
+	nfct, err := ct.Open(nil)
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -90,13 +90,13 @@ func ExampleNfct_Query() {
 }
 
 func ExampleNfct_RegisterFiltered() {
-	nfct, err := ct.Open()
+	nfct, err := ct.Open(nil)
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
 	}
 	defer nfct.Close()
-	errChan, err := nfct.RegisterFiltered(
+	err = nfct.RegisterFiltered(
 		context.Background(), ct.Ct, ct.NetlinkCtUpdate,
 		[]ct.ConnAttr{
 			{Type: ct.AttrOrigL4Proto, Data: []byte{0x11}}, // TCP
@@ -108,12 +108,7 @@ func ExampleNfct_RegisterFiltered() {
 		fmt.Println("Could not register with filter:", err)
 		return
 	}
-	for {
-		select {
-		case errMsg := <-errChan:
-			fmt.Println(errMsg)
-		case <-time.After(10 * time.Second):
-			break
-		}
+	select {
+	case <-time.After(10 * time.Second):
 	}
 }

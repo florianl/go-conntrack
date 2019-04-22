@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"log"
 
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
@@ -39,15 +40,28 @@ const (
 	ipctnlMsgExpGetStatsCPU = iota
 )
 
+// devNull satisfies io.Writer, in case *log.Logger is not provided
+type devNull struct{}
+
+func (devNull) Write(p []byte) (int, error) {
+	return 0, nil
+}
+
 // Open a connection to the conntrack subsystem
-func Open() (*Nfct, error) {
+func Open(config *Config) (*Nfct, error) {
 	var nfct Nfct
 
-	con, err := netlink.Dial(unix.NETLINK_NETFILTER, nil)
+	con, err := netlink.Dial(unix.NETLINK_NETFILTER, &netlink.Config{NetNS: config.NetNS})
 	if err != nil {
 		return nil, err
 	}
 	nfct.Con = con
+
+	if config.Logger == nil {
+		nfct.logger = log.New(new(devNull), "", 0)
+	} else {
+		nfct.logger = config.Logger
+	}
 
 	return &nfct, nil
 }
@@ -299,7 +313,7 @@ type HookFunc func(c Conn) int
 
 // Register your function to receive events from a Netlinkgroup.
 // If your function returns something different than 0, it will stop.
-func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, fn HookFunc) (<-chan error, error) {
+func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, fn HookFunc) error {
 	return nfct.register(ctx, t, group, []ConnAttr{}, fn)
 }
 
@@ -307,27 +321,25 @@ func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, f
 // If your function returns something different than 0, it will stop.
 // ConnAttr of the same ConnAttrType will be linked by an OR operation.
 // Otherwise, ConnAttr of different ConnAttrType will be connected by an AND operation for the filter.
-func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn HookFunc) (<-chan error, error) {
+func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn HookFunc) error {
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
-func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) (<-chan error, error) {
+func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) error {
 	if err := nfct.manageGroups(t, uint32(groups), true); err != nil {
-		return nil, err
+		return err
 	}
 	if err := nfct.attachFilter(t, filter); err != nil {
-		return nil, err
+		return err
 	}
-	ctrl := make(chan error)
 	go func() {
 		defer func() {
 			if err := nfct.removeFilter(); err != nil {
-				ctrl <- err
+				nfct.logger.Printf("could not remove filter: %v", err)
 			}
 			if err := nfct.manageGroups(t, uint32(groups), false); err != nil {
-				ctrl <- err
+				nfct.logger.Printf("could not unsubscribe grom group: %v", err)
 			}
-			close(ctrl)
 
 		}()
 
@@ -339,14 +351,14 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, 
 			}
 			reply, err := nfct.Con.Receive()
 			if err != nil {
-				ctrl <- err
+				nfct.logger.Printf("receiving error: %v", err)
 				return
 			}
 
 			for _, msg := range reply {
 				c, err := parseConnectionMsg(msg, int(msg.Header.Type)&0xF)
 				if err != nil {
-					ctrl <- err
+					nfct.logger.Printf("could not parse received message: %v", err)
 				}
 				if ret := fn(c); ret != 0 {
 					return
@@ -355,7 +367,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, 
 
 		}
 	}()
-	return ctrl, nil
+	return nil
 }
 
 func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {

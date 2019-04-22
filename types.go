@@ -2,6 +2,7 @@ package conntrack
 
 import (
 	"errors"
+	"log"
 	"net"
 
 	"github.com/mdlayher/netlink"
@@ -9,10 +10,22 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Config contains options for a Conn.
+type Config struct {
+	// Network namespace the Nflog needs to operate in. If set to 0 (default),
+	// no network namespace will be entered.
+	NetNS int
+
+	// Interface to log internals.
+	Logger *log.Logger
+}
+
 // Nfct represents a conntrack handler
 type Nfct struct {
 	// Con is the pure representation of a netlink socket
 	Con *netlink.Conn
+
+	logger *log.Logger
 }
 
 // Conn contains all the information of a connection
