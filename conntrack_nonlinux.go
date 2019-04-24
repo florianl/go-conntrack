@@ -37,13 +37,13 @@ func (nfct *Nfct) Create(_ CtTable, _ CtFamily, _ []ConnAttr) error { return Err
 func (nfct *Nfct) Query(_ CtTable, _ CtFamily, _ FilterAttr) ([]Conn, error) { return nil, ErrNotLinux }
 
 // Register returns an error, as this packages highly depends on the netfilter subsystem of the linux kernel
-func (nfct *Nfct) Register(_ context.Context, _ CtTable, _ NetlinkGroup, _ func(c Conn) int) (<-chan error, error) {
-	return nil, ErrNotLinux
+func (nfct *Nfct) Register(_ context.Context, _ CtTable, _ NetlinkGroup, _ func(c Conn) int) error {
+	return ErrNotLinux
 }
 
 // RegisterFiltered returns an error, as this packages highly depends on the netfilter subsystem of the linux kernel
-func (nfct *Nfct) RegisterFiltered(_ context.Context, _ CtTable, _ NetlinkGroup, _ []ConnAttr, _ func(c Conn) int) (<-chan error, error) {
-	return nil, ErrNotLinux
+func (nfct *Nfct) RegisterFiltered(_ context.Context, _ CtTable, _ NetlinkGroup, _ []ConnAttr, _ func(c Conn) int) error {
+	return ErrNotLinux
 }
 
 // ParseAttributes extracts all the attributes from the given data

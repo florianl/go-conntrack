@@ -22,11 +22,11 @@ func TestOthersUnimplemented(t *testing.T) {
 		t.Fatalf("unexpected error during Open:\n- want: %v\n-  got: %v", want, got)
 	}
 
-	if _, got := nfct.Register(nil, 0, 0, nil); want != got {
+	if got := nfct.Register(nil, 0, 0, nil); want != got {
 		t.Fatalf("unexpected error during Open:\n- want: %v\n-  got: %v", want, got)
 	}
 
-	if _, got := nfct.RegisterFiltered(nil, 0, 0, nil, nil); want != got {
+	if got := nfct.RegisterFiltered(nil, 0, 0, nil, nil); want != got {
 		t.Fatalf("unexpected error during Open:\n- want: %v\n-  got: %v", want, got)
 	}
 
