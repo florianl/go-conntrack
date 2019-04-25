@@ -18,9 +18,9 @@ func TestConstructFilter(t *testing.T) {
 	}{
 		// Example from libnetfilter_conntrack/utils/conntrack_filter.c
 		{name: "conntrack_filter.c", table: Ct, filters: []ConnAttr{
-			{Type: AttrOrigL4Proto, Data: []byte{0x11}},                                                                    // TCP
-			{Type: AttrOrigL4Proto, Data: []byte{0x06}},                                                                    // UDP
-			{Type: AttrTCPState, Data: []byte{0x3}},                                                                        // TCP_CONNTRACK_ESTABLISHED
+			{Type: AttrOrigL4Proto, Data: []byte{0x11}}, // TCP
+			{Type: AttrOrigL4Proto, Data: []byte{0x06}}, // UDP
+			{Type: AttrTCPState, Data: []byte{0x3}},     // TCP_CONNTRACK_ESTABLISHED
 			{Type: AttrOrigIPv4Src, Data: []byte{0x7F, 0x0, 0x0, 0x1}, Mask: []byte{0xff, 0xff, 0xff, 0xff}, Negate: true}, // SrcIP != 127.0.0.1
 			{Type: AttrOrigIPv6Src, Data: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, // SrcIP != ::1
 				Mask: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, Negate: true},
