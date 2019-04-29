@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"time"
 
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
@@ -16,6 +17,12 @@ type Config struct {
 	// no network namespace will be entered.
 	NetNS int
 
+	// Time till a read action times out - only available for Go >= 1.12
+	ReadTimeout time.Duration
+
+	// Time till a write action times out - only available for Go >= 1.12
+	WriteTimeout time.Duration
+
 	// Interface to log internals.
 	Logger *log.Logger
 }
@@ -26,6 +33,9 @@ type Nfct struct {
 	Con *netlink.Conn
 
 	logger *log.Logger
+
+	setReadTimeout  func() error
+	setWriteTimeout func() error
 }
 
 // Conn contains all the information of a connection

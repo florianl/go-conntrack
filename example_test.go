@@ -10,7 +10,7 @@ import (
 )
 
 func ExampleNfct_Dump() {
-	nfct, err := ct.Open(&ct.Config{})
+	nfct, err := ct.Open(&ct.Config{ReadTimeout: 10 * time.Millisecond})
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -30,7 +30,7 @@ func ExampleNfct_Dump() {
 }
 
 func ExampleNfct_Flush() {
-	nfct, err := ct.Open(&ct.Config{})
+	nfct, err := ct.Open(&ct.Config{ReadTimeout: 10 * time.Millisecond})
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -44,7 +44,7 @@ func ExampleNfct_Flush() {
 }
 
 func ExampleNfct_Create() {
-	nfct, err := ct.Open(&ct.Config{})
+	nfct, err := ct.Open(&ct.Config{WriteTimeout: 10 * time.Millisecond})
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -68,7 +68,7 @@ func ExampleNfct_Create() {
 }
 
 func ExampleNfct_Query() {
-	nfct, err := ct.Open(&ct.Config{})
+	nfct, err := ct.Open(&ct.Config{ReadTimeout: 10 * time.Millisecond})
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return
@@ -90,7 +90,7 @@ func ExampleNfct_Query() {
 }
 
 func ExampleNfct_RegisterFiltered() {
-	nfct, err := ct.Open(&ct.Config{})
+	nfct, err := ct.Open(&ct.Config{ReadTimeout: 10 * time.Millisecond})
 	if err != nil {
 		fmt.Println("Could not create nfct:", err)
 		return

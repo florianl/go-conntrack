@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
 
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
@@ -45,25 +44,6 @@ type devNull struct{}
 
 func (devNull) Write(p []byte) (int, error) {
 	return 0, nil
-}
-
-// Open a connection to the conntrack subsystem
-func Open(config *Config) (*Nfct, error) {
-	var nfct Nfct
-
-	con, err := netlink.Dial(unix.NETLINK_NETFILTER, &netlink.Config{NetNS: config.NetNS})
-	if err != nil {
-		return nil, err
-	}
-	nfct.Con = con
-
-	if config.Logger == nil {
-		nfct.logger = log.New(new(devNull), "", 0)
-	} else {
-		nfct.logger = config.Logger
-	}
-
-	return &nfct, nil
 }
 
 // Close the connection to the conntrack subsystem
@@ -349,6 +329,9 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, 
 				return
 			default:
 			}
+			if err := nfct.setReadTimeout(); err != nil {
+				nfct.logger.Printf("could not set read timeout: %v", err)
+			}
 			reply, err := nfct.Con.Receive()
 			if err != nil {
 				nfct.logger.Printf("receiving error: %v", err)
@@ -426,6 +409,9 @@ func unmarschalErrMsg(b []byte) (ErrMsg, error) {
 }
 
 func (nfct *Nfct) execute(req netlink.Message) error {
+	if err := nfct.setWriteTimeout(); err != nil {
+		nfct.logger.Printf("could not set write timeout: %v", err)
+	}
 	reply, e := nfct.Con.Execute(req)
 	if e != nil {
 		return e
@@ -446,6 +432,9 @@ func (nfct *Nfct) execute(req netlink.Message) error {
 }
 
 func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
+	if err := nfct.setWriteTimeout(); err != nil {
+		nfct.logger.Printf("could not set write timeout: %v", err)
+	}
 	verify, err := nfct.Con.Send(req)
 	if err != nil {
 		return nil, err
@@ -455,6 +444,9 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 		return nil, err
 	}
 
+	if err := nfct.setReadTimeout(); err != nil {
+		nfct.logger.Printf("could not set read timeout: %v", err)
+	}
 	reply, err := nfct.Con.Receive()
 	if err != nil {
 		return nil, err
