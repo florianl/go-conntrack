@@ -1,11 +1,10 @@
 //+build linux
 
-package conntrack_test
+package conntrack
 
 import (
 	"testing"
 
-	ct "github.com/florianl/go-conntrack"
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nltest"
 )
@@ -13,10 +12,10 @@ import (
 func TestFlush(t *testing.T) {
 	tests := []struct {
 		name   string
-		family ct.CtFamily
+		family CtFamily
 		want   []netlink.Message
 	}{
-		{name: "Flush IPv4", family: ct.CtIPv4, want: []netlink.Message{
+		{name: "Flush IPv4", family: CtIPv4, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -34,7 +33,7 @@ func TestFlush(t *testing.T) {
 			},
 		},
 		},
-		{name: "Flush IPv6", family: ct.CtIPv6, want: []netlink.Message{
+		{name: "Flush IPv6", family: CtIPv6, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -57,7 +56,8 @@ func TestFlush(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Fake a netfilter conntrack connection
-			nfct := &ct.Nfct{}
+			nfct := &Nfct{}
+			AdjustWriteTimeout(nfct, func() error { return nil })
 			nfct.Con = nltest.Dial(func(reqs []netlink.Message) ([]netlink.Message, error) {
 				if len(reqs) == 0 {
 					return nil, nil
@@ -93,7 +93,7 @@ func TestFlush(t *testing.T) {
 			})
 			defer nfct.Con.Close()
 
-			if err := nfct.Flush(ct.Ct, tc.family); err != nil {
+			if err := nfct.Flush(Ct, tc.family); err != nil {
 				t.Fatal(err)
 			}
 
@@ -104,10 +104,10 @@ func TestFlush(t *testing.T) {
 func TestCreate(t *testing.T) {
 	tests := []struct {
 		name       string
-		attributes []ct.ConnAttr
+		attributes []ConnAttr
 		want       []netlink.Message
 	}{
-		{name: "noAttributes", attributes: []ct.ConnAttr{}, want: []netlink.Message{
+		{name: "noAttributes", attributes: []ConnAttr{}, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -125,14 +125,14 @@ func TestCreate(t *testing.T) {
 			},
 		}},
 		// Example from libnetfilter_conntrack/utils/conntrack_create.c
-		{name: "conntrack_create.c", attributes: []ct.ConnAttr{
-			{Type: ct.AttrOrigIPv4Src, Data: []byte{0x1, 0x1, 0x1, 0x1}}, // SrcIP
-			{Type: ct.AttrOrigIPv4Dst, Data: []byte{0x2, 0x2, 0x2, 0x2}}, // DstIP
-			{Type: ct.AttrOrigL4Proto, Data: []byte{0x11}},               // TCP
-			{Type: ct.AttrOrigPortSrc, Data: []byte{0x00, 0x14}},         // SrcPort
-			{Type: ct.AttrOrigPortDst, Data: []byte{0x00, 0x0A}},         // DstPort
-			{Type: ct.AttrTCPState, Data: []byte{0x1}},                   // TCP-State
-			{Type: ct.AttrTimeout, Data: []byte{0x00, 0x00, 0x00, 0x64}}, // Timeout
+		{name: "conntrack_create.c", attributes: []ConnAttr{
+			{Type: AttrOrigIPv4Src, Data: []byte{0x1, 0x1, 0x1, 0x1}}, // SrcIP
+			{Type: AttrOrigIPv4Dst, Data: []byte{0x2, 0x2, 0x2, 0x2}}, // DstIP
+			{Type: AttrOrigL4Proto, Data: []byte{0x11}},               // TCP
+			{Type: AttrOrigPortSrc, Data: []byte{0x00, 0x14}},         // SrcPort
+			{Type: AttrOrigPortDst, Data: []byte{0x00, 0x0A}},         // DstPort
+			{Type: AttrTCPState, Data: []byte{0x1}},                   // TCP-State
+			{Type: AttrTimeout, Data: []byte{0x00, 0x00, 0x00, 0x64}}, // Timeout
 		}, want: []netlink.Message{
 			{
 				Header: netlink.Header{
@@ -154,7 +154,9 @@ func TestCreate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			nfct := &ct.Nfct{}
+			nfct := &Nfct{}
+			AdjustReadTimeout(nfct, func() error { return nil })
+			AdjustWriteTimeout(nfct, func() error { return nil })
 			nfct.Con = nltest.Dial(func(reqs []netlink.Message) ([]netlink.Message, error) {
 				if len(reqs) == 0 {
 					return nil, nil
@@ -189,7 +191,7 @@ func TestCreate(t *testing.T) {
 			})
 			defer nfct.Con.Close()
 
-			if err := nfct.Create(ct.Ct, ct.CtIPv4, tc.attributes); err != nil {
+			if err := nfct.Create(Ct, CtIPv4, tc.attributes); err != nil {
 				t.Fatal(err)
 			}
 		})

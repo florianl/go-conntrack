@@ -38,6 +38,16 @@ type Nfct struct {
 	setWriteTimeout func() error
 }
 
+// adjust the ReadTimeout (mostly for testing)
+func adjustReadTimeout(nfct *Nfct, fn func() error) {
+	nfct.setReadTimeout = fn
+}
+
+// adjust the WriteTimeout (mostly for testing)
+func adjustWriteTimeout(nfct *Nfct, fn func() error) {
+	nfct.setWriteTimeout = fn
+}
+
 // Conn contains all the information of a connection
 type Conn map[ConnAttrType][]byte
 
