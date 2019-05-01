@@ -232,7 +232,7 @@ func extractProtocolTuple(conn Conn, dir int, data []byte) error {
 		case ctaProtoIcmpv6ID:
 			conn[AttrIcmpID] = attr.Data
 		case ctaProtoIcmpv6Type:
-			conn[AttrIcmpCode] = attr.Data
+			conn[AttrIcmpType] = attr.Data
 		case ctaProtoIcmpv6Code:
 			conn[AttrIcmpCode] = attr.Data
 		default:
