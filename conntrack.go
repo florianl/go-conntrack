@@ -356,6 +356,11 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, 
 func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
 	var manage func(group uint32) error
 
+	if groups == 0 {
+		nfct.logger.Println("will not join group 0")
+		return nil
+	}
+
 	if join == true {
 		manage = nfct.Con.JoinGroup
 	} else {
@@ -364,17 +369,27 @@ func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
 
 	switch t {
 	case Ct:
+		mapping := map[uint32]uint32{
+			uint32(NetlinkCtNew):     1, // NFNLGRP_CONNTRACK_NEW
+			uint32(NetlinkCtUpdate):  2, // NFNLGRP_CONNTRACK_UPDATE
+			uint32(NetlinkCtDestroy): 3, // NFNLGRP_CONNTRACK_DESTROY
+		}
 		for _, v := range []NetlinkGroup{NetlinkCtNew, NetlinkCtUpdate, NetlinkCtDestroy} {
 			if groups&uint32(v) == uint32(v) {
-				if err := manage(groups & uint32(v)); err != nil {
+				if err := manage(mapping[groups&uint32(v)]); err != nil {
 					return err
 				}
 			}
 		}
 	case CtExpected:
+		mapping := map[uint32]uint32{
+			uint32(NetlinkCtExpectedNew):     4, // NFNLGRP_CONNTRACK_EXP_NEW
+			uint32(NetlinkCtExpectedUpdate):  5, // NFNLGRP_CONNTRACK_EXP_UPDATE
+			uint32(NetlinkCtExpectedDestroy): 6, // NFNLGRP_CONNTRACK_EXP_DESTROY
+		}
 		for _, v := range []NetlinkGroup{NetlinkCtExpectedNew, NetlinkCtExpectedUpdate, NetlinkCtExpectedDestroy} {
 			if groups&uint32(v) == uint32(v) {
-				if err := manage(groups & uint32(v)); err != nil {
+				if err := manage(mapping[groups&uint32(v)]); err != nil {
 					return err
 				}
 			}
