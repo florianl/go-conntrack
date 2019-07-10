@@ -69,7 +69,7 @@ func nestAttributes(filters []ConnAttr) ([]byte, error) {
 		case AttrReplIPv4Src, AttrReplIPv4Dst, AttrReplIPv6Src, AttrReplIPv6Dst, AttrReplL4Proto, AttrReplPortSrc, AttrReplPortDst:
 			tupleRepl = append(tupleRepl, filter)
 		case AttrTCPFlagsOrig, AttrTCPFlagsRepl, AttrTCPState, AttrTCPWScaleOrig, AttrTCPWScaleRepl, AttrSctpState, AttrSctpVtagOrig, AttrSctpVtagRepl, AttrDccpState, AttrDccpRole, AttrDccpHandshakeSeq:
-			tupleProto = append(tupleProto)
+			tupleProto = append(tupleProto, filter)
 		default:
 			attrs = append(attrs, netlink.Attribute{Type: uint16(filterCheck[filter.Type].ct), Data: filter.Data})
 		}
