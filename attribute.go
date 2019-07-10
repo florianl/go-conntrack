@@ -4,6 +4,8 @@ package conntrack
 
 import (
 	"fmt"
+	"log"
+	"net"
 
 	"github.com/mdlayher/netlink"
 	"golang.org/x/sys/unix"
@@ -118,6 +120,89 @@ const (
 
 const nlafNested = (1 << 15)
 
+func extractIP(logger *log.Logger, data []byte) (net.IP, net.IP, error) {
+	var src, dst net.IP
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return src, dst, err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaIPv4Src:
+			src = net.IP(ad.Bytes())
+		case ctaIPv4Dst:
+			dst = net.IP(ad.Bytes())
+		case ctaIPv6Src:
+			src = net.IP(ad.Bytes())
+		case ctaIPv6Dst:
+			dst = net.IP(ad.Bytes())
+		default:
+			return src, dst, fmt.Errorf("extractIP(): %d | %d\t %v\n", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return src, dst, nil
+}
+
+func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() + nlafNested {
+		case ctaTupleIP:
+			src, dst, err := extractIP(logger, ad.Bytes())
+			if err != nil {
+				return err
+			}
+			v.Src = src
+			v.Dst = dst
+		case ctaTupleProto:
+		case ctaTupleZone:
+		default:
+			return fmt.Errorf("extractIPTuple(): %d | %d\t %v\n", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return nil
+}
+
+func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() & 0xFF {
+		case ctaTupleOrig:
+			tuple := &IPTuple{}
+			if err := extractIPTuple(tuple, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.Origin = tuple
+		case ctaTupleReply:
+			tuple := &IPTuple{}
+			if err := extractIPTuple(tuple, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.Reply = tuple
+		case ctaID:
+			tmp := ad.Uint32()
+			logger.Printf("ID: %d", tmp)
+			c.ID = &tmp
+		case ctaStatus:
+			tmp := ad.Uint32()
+			logger.Printf("Status: %d", tmp)
+			c.Status = &tmp
+		default:
+			logger.Printf("extractAttribute() - Unknown attribute: %d %v\n", ad.Type(), ad.Bytes())
+		}
+	}
+	return nil
+}
+
 func checkHeader(data []byte) int {
 	if (data[0] == unix.AF_INET || data[0] == unix.AF_INET6) && data[1] == unix.NFNETLINK_V0 {
 		return 4
@@ -125,404 +210,12 @@ func checkHeader(data []byte) int {
 	return 0
 }
 
-func extractTCPTuple(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaProtoinfoTCPState:
-			conn[AttrTCPState] = attr.Data
-		case ctaProtoinfoTCPWScaleOrig:
-			conn[AttrTCPWScaleOrig] = attr.Data
-		case ctaProtoinfoTCPWScaleRepl:
-			conn[AttrTCPWScaleRepl] = attr.Data
-		case ctaProtoinfoTCPFlagsOrig:
-			conn[AttrTCPFlagsOrig] = attr.Data
-		case ctaProtoinfoTCPFlagsRepl:
-			conn[AttrTCPFlagsRepl] = attr.Data
-		}
-	}
-	return nil
-}
-
-func extractDCCPTuple(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaProtoinfoDCCPState:
-			conn[AttrDccpState] = attr.Data
-		case ctaProtoinfoDCCPRole:
-			conn[AttrDccpRole] = attr.Data
-		case ctaProtoinfoDCCPHandshakeSeq:
-			conn[AttrDccpHandshakeSeq] = attr.Data
-		}
-	}
-	return nil
-}
-
-func extractSCTPTuple(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaProtoinfoSCTPState:
-			conn[AttrSctpState] = attr.Data
-		case ctaProtoinfoSCTPVTagOriginal:
-			conn[AttrSctpVtagOrig] = attr.Data
-		case ctaProtoinfoSCTPVTagReply:
-			conn[AttrSctpVtagRepl] = attr.Data
-		}
-	}
-	return nil
-}
-
-func extractProtoinfo(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaProtoinfoTCP:
-			if err := extractTCPTuple(conn, attr.Data); err != nil {
-				return err
-			}
-		case ctaProtoinfoDCCP:
-			if err := extractDCCPTuple(conn, attr.Data); err != nil {
-				return err
-			}
-		case ctaProtoinfoSCTP:
-			if err := extractSCTPTuple(conn, attr.Data); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func extractProtocolTuple(conn Conn, dir int, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type {
-		case ctaProtoNum:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigL4Proto, dirReply: AttrReplL4Proto, dirMaster: AttrMasterL4Proto}[dir]
-			conn[eleType] = attr.Data
-		case ctaProtoSrcPort:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigPortSrc, dirReply: AttrReplPortSrc, dirMaster: AttrMasterPortSrc}[dir]
-			conn[eleType] = attr.Data
-		case ctaProtoDstPort:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigPortDst, dirReply: AttrReplPortDst, dirMaster: AttrMasterPortDst}[dir]
-			conn[eleType] = attr.Data
-		case ctaProtoIcmpID:
-			conn[AttrIcmpID] = attr.Data
-		case ctaProtoIcmpType:
-			conn[AttrIcmpType] = attr.Data
-		case ctaProtoIcmpCode:
-			conn[AttrIcmpCode] = attr.Data
-		case ctaProtoIcmpv6ID:
-			conn[AttrIcmpID] = attr.Data
-		case ctaProtoIcmpv6Type:
-			conn[AttrIcmpType] = attr.Data
-		case ctaProtoIcmpv6Code:
-			conn[AttrIcmpCode] = attr.Data
-		default:
-			fmt.Printf("Tuple %d is not yet implemented: %v\n", attr.Type, attr.Data)
-		}
-	}
-	return nil
-}
-
-func extractIPTuple(conn Conn, dir int, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type {
-		case ctaIPv4Src:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv4Src, dirReply: AttrReplIPv4Src, dirMaster: AttrMasterIPv4Src}[dir]
-			conn[eleType] = attr.Data
-
-			eleType = map[int]ConnAttrType{dirOrig: AttrOrigL3Proto, dirReply: AttrReplL3Proto, dirMaster: AttrMasterL3Proto}[dir]
-			conn[eleType] = []byte{byte(unix.AF_INET)}
-		case ctaIPv4Dst:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv4Dst, dirReply: AttrReplIPv4Dst, dirMaster: AttrMasterIPv4Dst}[dir]
-			conn[eleType] = attr.Data
-		case ctaIPv6Src:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv6Src, dirReply: AttrReplIPv6Src, dirMaster: AttrMasterIPv6Src}[dir]
-			conn[eleType] = attr.Data
-
-			eleType = map[int]ConnAttrType{dirOrig: AttrOrigL3Proto, dirReply: AttrReplL3Proto, dirMaster: AttrMasterL3Proto}[dir]
-			conn[eleType] = []byte{byte(unix.AF_INET6)}
-		case ctaIPv6Dst:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigIPv6Dst, dirReply: AttrReplIPv6Dst, dirMaster: AttrMasterIPv6Dst}[dir]
-			conn[eleType] = attr.Data
-		default:
-			fmt.Printf("Tuple %d is not yet implemented: %v\n", attr.Type, attr.Data)
-		}
-	}
-	return nil
-}
-
-func extractTuple(conn Conn, dir int, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type {
-		case ctaTupleIP + nlafNested:
-			if err := extractIPTuple(conn, dir, attr.Data); err != nil {
-				return err
-			}
-		case ctaTupleProto + nlafNested:
-			if err := extractProtocolTuple(conn, dir, attr.Data); err != nil {
-				return err
-			}
-		case ctaTupleZone:
-			eleType := map[int]ConnAttrType{dirOrig: AttrOrigzone, dirReply: AttrReplzone}[dir]
-			conn[eleType] = attr.Data
-		default:
-			fmt.Printf("Tuple %d is not yet implemented: %v\n", attr.Type, attr.Data)
-		}
-	}
-	return nil
-}
-
-func extractCounterTuple(conn Conn, dir int, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaCounter32Packets:
-			fallthrough
-		case ctaCounterPackets:
-			if dir == -1 {
-				conn[AttrOrigCounterPackets] = attr.Data
-			} else {
-				conn[AttrReplCounterPackets] = attr.Data
-			}
-		case ctaCounter32Bytes:
-			fallthrough
-		case ctaCounterBytes:
-			if dir == -1 {
-				conn[AttrOrigCounterBytes] = attr.Data
-			} else {
-				conn[AttrReplCounterBytes] = attr.Data
-			}
-		}
-	}
-	return nil
-}
-
-func extractTimestampTuple(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaTimestampStart:
-			conn[AttrTimestampStart] = attr.Data
-		case ctaTimestampStop:
-			conn[AttrTimestampStop] = attr.Data
-		}
-	}
-	return nil
-}
-
-func extractHelpTuple(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaHelpName:
-			conn[AttrHelperName] = attr.Data
-		case ctaHelpInfo:
-			conn[AttrHelperInfo] = attr.Data
-		}
-	}
-	return nil
-}
-
-func extractNATSeqTuple(conn Conn, dir int, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-	for _, attr := range attributes {
-		switch attr.Type & 0XFF {
-		case ctaSeqAdjCorrPos:
-			conn[ConnAttrType(int(AttrOrigNatSeqCorrectionPos)+dir)] = attr.Data
-		case ctaSeqAdjOffsetBefore:
-			conn[ConnAttrType(int(AttrOrigNatSeqOffsetBefore)+dir)] = attr.Data
-		case ctaSeqAdjOffsetAfter:
-			conn[ConnAttrType(int(AttrOrigNatSeqOffsetAfter)+dir)] = attr.Data
-		}
-	}
-	return nil
-}
-
-func extractAttribute(conn Conn, data []byte) error {
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return err
-	}
-
-	for _, attr := range attributes {
-		switch attr.Type & 0xFF {
-		case ctaTupleOrig:
-			if err := extractTuple(conn, dirOrig, attr.Data); err != nil {
-				return err
-			}
-		case ctaTupleReply:
-			if err := extractTuple(conn, dirReply, attr.Data); err != nil {
-				return err
-			}
-		case ctaProtoinfo:
-			if err := extractProtoinfo(conn, attr.Data); err != nil {
-				return err
-			}
-		case ctaSeqAdjOrig:
-			if err := extractNATSeqTuple(conn, 0, attr.Data); err != nil {
-				return err
-			}
-		case ctaSeqAdjRepl:
-			if err := extractNATSeqTuple(conn, 3, attr.Data); err != nil {
-				return err
-			}
-		case ctaCountersOrig:
-			if err := extractCounterTuple(conn, -1, attr.Data); err != nil {
-				return err
-			}
-		case ctaCountersReply:
-			if err := extractCounterTuple(conn, 1, attr.Data); err != nil {
-				return err
-			}
-		case ctaTimestamp:
-			if err := extractTimestampTuple(conn, attr.Data); err != nil {
-				return err
-			}
-		case ctaHelp:
-			if err := extractHelpTuple(conn, attr.Data); err != nil {
-				return err
-			}
-		case ctaTimeout:
-			conn[AttrTimeout] = attr.Data
-		case ctaID:
-			conn[AttrID] = attr.Data
-		case ctaUse:
-			conn[AttrUse] = attr.Data
-		case ctaStatus:
-			conn[AttrStatus] = attr.Data
-		case ctaMark:
-			conn[AttrMark] = attr.Data
-		case ctaSecCtx:
-			conn[AttrSecCtx] = attr.Data
-		case ctaLables:
-			conn[AttrConnlabels] = attr.Data
-		case ctaLablesMask:
-			conn[AttrConnlabelsMask] = attr.Data
-		case ctaSecmark:
-			conn[AttrSecmark] = attr.Data
-		case ctaZone:
-			conn[AttrZone] = attr.Data
-		case ctaNatDst:
-			/* deprecated	*/
-		case ctaNatSrc:
-			/* deprecated	*/
-		default:
-			fmt.Println(attr.Type&0xFF, "\t", attr.Length, "\t", attr.Data)
-		}
-	}
-	return nil
-}
-
-func extractAttributes(msg []byte) (Conn, error) {
-	var conn = make(map[ConnAttrType][]byte)
+func extractAttributes(logger *log.Logger, msg []byte) (Con, error) {
+	c := Con{}
 
 	offset := checkHeader(msg[:2])
-	if err := extractAttribute(conn, msg[offset:]); err != nil {
-		return nil, err
+	if err := extractAttribute(&c, logger, msg[offset:]); err != nil {
+		return c, err
 	}
-	return conn, nil
-}
-
-func extractStats(data []byte) (Conn, error) {
-	var stats = make(map[ConnAttrType][]byte)
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return nil, err
-	}
-	for _, attr := range attributes {
-		switch ConnAttrType(attr.Type) {
-		case StatsGlobalEntries:
-			stats[StatsGlobalEntries] = attr.Data
-		case StatsGlobalMaxEntries:
-			stats[StatsGlobalMaxEntries] = attr.Data
-		default:
-			fmt.Println(attr.Type, "\t", attr.Length, "\t", attr.Data)
-		}
-
-	}
-	return stats, nil
-}
-
-func extractStatsCPU(data []byte) (Conn, error) {
-	var stats = make(map[ConnAttrType][]byte)
-	attributes, err := netlink.UnmarshalAttributes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	// The CPU identifier is hidden in the first four bytes
-	stats[CPUID] = data[0:4]
-
-	for _, attr := range attributes {
-		switch ConnAttrType(attr.Type) {
-		case CPUStatsSearched:
-			stats[CPUStatsSearched] = attr.Data
-		case CPUStatsFound:
-			stats[CPUStatsFound] = attr.Data
-		case CPUStatsNew:
-			stats[CPUStatsNew] = attr.Data
-		case CPUStatsInvalid:
-			stats[CPUStatsInvalid] = attr.Data
-		case CPUStatsIgnore:
-			stats[CPUStatsIgnore] = attr.Data
-		case CPUStatsDelete:
-			stats[CPUStatsDelete] = attr.Data
-		case CPUStatsDeleteList:
-			stats[CPUStatsDeleteList] = attr.Data
-		case CPUStatsInsert:
-			stats[CPUStatsInsert] = attr.Data
-		case CPUStatsInsertFailed:
-			stats[CPUStatsInsertFailed] = attr.Data
-		case CPUStatsDrop:
-			stats[CPUStatsDrop] = attr.Data
-		case CPUStatsEarlyDrop:
-			stats[CPUStatsEarlyDrop] = attr.Data
-		case CPUStatsError:
-			stats[CPUStatsError] = attr.Data
-		case CPUStatsSearchRestart:
-			stats[CPUStatsSearchRestart] = attr.Data
-		default:
-			fmt.Println(attr.Type, "\t", attr.Length, "\t", attr.Data)
-		}
-	}
-	return stats, nil
+	return c, nil
 }

@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"log"
+	"unsafe"
 
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
@@ -38,6 +40,23 @@ const (
 	ipctnlMsgExpDelete      = iota
 	ipctnlMsgExpGetStatsCPU = iota
 )
+
+// for detailes see https://github.com/tensorflow/tensorflow/blob/master/tensorflow/go/tensor.go#L488-L505
+var nativeEndian binary.ByteOrder
+
+func init() {
+	buf := [2]byte{}
+	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
+
+	switch buf {
+	case [2]byte{0xCD, 0xAB}:
+		nativeEndian = binary.LittleEndian
+	case [2]byte{0xAB, 0xCD}:
+		nativeEndian = binary.BigEndian
+	default:
+		panic("Could not determine native endianness.")
+	}
+}
 
 // devNull satisfies io.Writer, in case *log.Logger is not provided
 type devNull struct{}
@@ -72,34 +91,8 @@ func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 	return nfct.execute(req)
 }
 
-// DumpDying returns connections marked as dying
-func (nfct *Nfct) DumpDying(f CtFamily) ([]Conn, error) {
-	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
-	req := netlink.Message{
-		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetDying),
-			Flags: netlink.Request | netlink.Dump,
-		},
-		Data: data,
-	}
-	return nfct.query(req)
-}
-
-// DumpUnconfirmed returns connections marked as unconfirmed
-func (nfct *Nfct) DumpUnconfirmed(f CtFamily) ([]Conn, error) {
-	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
-	req := netlink.Message{
-		Header: netlink.Header{
-			Type:  netlink.HeaderType((Ct << 8) | ipctnlMsgCtGetUnconfirmed),
-			Flags: netlink.Request | netlink.Dump,
-		},
-		Data: data,
-	}
-	return nfct.query(req)
-}
-
 // Dump a conntrack subsystem
-func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
+func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Con, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
@@ -116,42 +109,6 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Conn, error) {
 		return nil, ErrUnknownCtTable
 	}
 
-	return nfct.query(req)
-}
-
-// DumpCPUStats gets statistics about the conntrack subsystem
-func (nfct *Nfct) DumpCPUStats(t CtTable) ([]Conn, error) {
-	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
-	req := netlink.Message{
-		Header: netlink.Header{
-			Flags: netlink.Request | netlink.Dump,
-		},
-		Data: data,
-	}
-	if t == Ct {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStatsCPU)
-	} else if t == CtExpected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGetStatsCPU)
-	} else {
-		return nil, ErrUnknownCtTable
-	}
-	return nfct.query(req)
-}
-
-// Counters returns the global counters of the subsystem
-func (nfct *Nfct) Counters(t CtTable) ([]Conn, error) {
-	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
-	req := netlink.Message{
-		Header: netlink.Header{
-			Flags: netlink.Request | netlink.Acknowledge,
-		},
-		Data: data,
-	}
-	if t == Ct {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStats)
-	} else {
-		return nil, ErrUnknownCtTable
-	}
 	return nfct.query(req)
 }
 
@@ -228,68 +185,18 @@ func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 	return nfct.execute(req)
 }
 
-// Query conntrack subsystem with certain attributes
-func (nfct *Nfct) Query(t CtTable, f CtFamily, filter FilterAttr) ([]Conn, error) {
-	query, err := nestFilter(filter)
-	if err != nil {
-		return nil, err
-	}
-	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
-	data = append(data, query...)
-
-	req := netlink.Message{
-		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
-			Flags: netlink.Request | netlink.Dump,
-		},
-		Data: data,
-	}
-
-	if t == Ct {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
-	} else if t == CtExpected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
-	} else {
-		return nil, ErrUnknownCtTable
-	}
-	return nfct.query(req)
-}
-
-// Get returns matching conntrack entries with certain attributes
-func (nfct *Nfct) Get(t CtTable, f CtFamily, attributes []ConnAttr) ([]Conn, error) {
-	if t != Ct {
-		return nil, ErrUnknownCtTable
-	}
-
-	query, err := nestAttributes(attributes)
-	if err != nil {
-		return nil, err
-	}
-	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
-	data = append(data, query...)
-
-	req := netlink.Message{
-		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
-			Flags: netlink.Request | netlink.Acknowledge,
-		},
-		Data: data,
-	}
-	return nfct.query(req)
-}
-
 // ParseAttributes extracts all the attributes from the given data
-func ParseAttributes(data []byte) (Conn, error) {
+func ParseAttributes(logger *log.Logger, data []byte) (Con, error) {
 	// At least 2 bytes are needed for the header check
 	if len(data) < 2 {
-		return nil, ErrDataLength
+		return Con{}, ErrDataLength
 	}
-	return extractAttributes(data)
+	return extractAttributes(logger, data)
 }
 
 // HookFunc is a function, that receives events from a Netlinkgroup.
 // Return something different than 0, to stop receiving messages.
-type HookFunc func(c Conn) int
+type HookFunc func(c Con) int
 
 // Register your function to receive events from a Netlinkgroup.
 // If your function returns something different than 0, it will stop.
@@ -305,7 +212,7 @@ func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group Netlink
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
-func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, filter []ConnAttr, fn func(c Conn) int) error {
+func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, filter []ConnAttr, fn func(c Con) int) error {
 	if err := nfct.manageGroups(t, uint32(groups), true); err != nil {
 		return err
 	}
@@ -339,7 +246,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, 
 			}
 
 			for _, msg := range reply {
-				c, err := parseConnectionMsg(msg, int(msg.Header.Type)&0xF)
+				c, err := parseConnectionMsg(nfct.logger, msg, int(msg.Header.Type)&0xF)
 				if err != nil {
 					nfct.logger.Printf("could not parse received message: %v", err)
 				}
@@ -446,7 +353,7 @@ func (nfct *Nfct) execute(req netlink.Message) error {
 	return nil
 }
 
-func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
+func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
 	if err := nfct.setWriteTimeout(); err != nil {
 		nfct.logger.Printf("could not set write timeout: %v", err)
 	}
@@ -467,14 +374,11 @@ func (nfct *Nfct) query(req netlink.Message) ([]Conn, error) {
 		return nil, err
 	}
 
-	var conn []Conn
+	var conn []Con
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(msg, int(req.Header.Type)&0xF)
+		c, err := parseConnectionMsg(nfct.logger, msg, int(req.Header.Type)&0xF)
 		if err != nil {
 			return nil, err
-		}
-		if len(c) == 0 {
-			break
 		}
 		conn = append(conn, c)
 	}
@@ -488,31 +392,19 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 	return append([]byte{familiy, version}, buf...)
 }
 
-type extractFunc func([]byte) (Conn, error)
+type extractFunc func(*log.Logger, []byte) (Con, error)
 
-func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
-	if msg.Header.Type&netlink.Error == netlink.Error {
-		errMsg, err := unmarschalErrMsg(msg.Data)
-		if err != nil {
-			return nil, err
-		}
-		if errMsg.Code == 0 {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("%#v", errMsg)
-	}
+func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqType int) (Con, error) {
 
 	fnMap := map[int]extractFunc{
-		ipctnlMsgCtNew:         extractAttributes,
-		ipctnlMsgCtGet:         extractAttributes,
-		ipctnlMsgCtDelete:      extractAttributes,
-		ipctnlMsgCtGetStats:    extractStats,
-		ipctnlMsgCtGetStatsCPU: extractStatsCPU,
+		ipctnlMsgCtNew:    extractAttributes,
+		ipctnlMsgCtGet:    extractAttributes,
+		ipctnlMsgCtDelete: extractAttributes,
 	}
 
 	if fn, ok := fnMap[reqType]; ok {
-		return fn(msg.Data)
+		return fn(logger, msg.Data)
 	}
 
-	return nil, fmt.Errorf("Unknown message type: 0x%02x", reqType)
+	return Con{}, fmt.Errorf("Unknown message type: 0x%02x", reqType)
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/mdlayher/netlink"
-	"github.com/mdlayher/netlink/nlenc"
 	"golang.org/x/sys/unix"
 )
 
@@ -48,8 +47,24 @@ func adjustWriteTimeout(nfct *Nfct, fn func() error) {
 	nfct.setWriteTimeout = fn
 }
 
+// ProtoTuple contains the source and destination IP
+type ProtoTuple struct {
+}
+
+// IPTuple contains the source and destination IP
+type IPTuple struct {
+	Src   net.IP
+	Dst   net.IP
+	Proto ProtoTuple
+}
+
 // Conn contains all the information of a connection
-type Conn map[ConnAttrType][]byte
+type Con struct {
+	Origin *IPTuple
+	Reply  *IPTuple
+	ID     *uint32
+	Status *uint32
+}
 
 // CtTable specifies the subsystem of conntrack
 type CtTable int
@@ -222,71 +237,3 @@ var (
 
 // ErrUnknownCtTable will be return, if the function can not be performed on this subsystem
 var ErrUnknownCtTable = errors.New("Not supported for this subsystem")
-
-// OrigSrcIP returns the net.IP representation of the source IP
-func (c Conn) OrigSrcIP() (net.IP, error) {
-	if data, ok := c[AttrOrigIPv6Src]; ok {
-		ip := net.IP(data)
-		return ip, nil
-	} else if data, ok := c[AttrOrigIPv4Src]; ok {
-		ip := net.IPv4(data[0], data[1], data[2], data[3])
-		return ip, nil
-	}
-	return nil, ErrConnNoSrcIP
-}
-
-// OrigDstIP returns the net.IP representation of the destination IP
-func (c Conn) OrigDstIP() (net.IP, error) {
-	if data, ok := c[AttrOrigIPv6Dst]; ok {
-		ip := net.IP(data)
-		return ip, nil
-	} else if data, ok := c[AttrOrigIPv4Dst]; ok {
-		ip := net.IPv4(data[0], data[1], data[2], data[3])
-		return ip, nil
-	}
-	return nil, ErrConnNoSrcIP
-}
-
-// Uint8 returns the uint8 representation of the given attribute's data.
-func (c Conn) Uint8(attr ConnAttrType) (uint8, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 1 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint8(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
-
-// Uint16 returns the uint16 representation of the given attribute's data.
-func (c Conn) Uint16(attr ConnAttrType) (uint16, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 2 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint16(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
-
-// Uint32 returns the uint32 representation of the given attribute's data.
-func (c Conn) Uint32(attr ConnAttrType) (uint32, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 4 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint32(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
-
-// Uint64 returns the uint64 representation of the given attribute's data.
-func (c Conn) Uint64(attr ConnAttrType) (uint64, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 8 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint64(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
