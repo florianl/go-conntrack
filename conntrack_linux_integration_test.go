@@ -138,7 +138,7 @@ func TestLinuxConntrackDeleteEntry(t *testing.T) {
 	origSessID := []byte{}
 
 	for _, c := range conns {
-		if compare(c[AttrOrigIPv4Dst], []byte{127, 0, 0, 4}) == 0 {
+		if compare(c[AttrOrigIPv4Dst], []byte{127, 0, 0, 4}) == 0 && compare(c[AttrIcmpType], []byte{8}) == 0 {
 			sess := []ConnAttr{
 				{Type: AttrOrigIPv4Dst, Data: c[AttrOrigIPv4Dst]},
 				{Type: AttrOrigIPv4Src, Data: c[AttrOrigIPv4Src]},

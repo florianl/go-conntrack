@@ -490,6 +490,18 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 type extractFunc func([]byte) (Conn, error)
 
 func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
+
+	if msg.Header.Type == netlink.Error {
+		errMsg, err := unmarschalErrMsg(msg.Data)
+		if err != nil {
+			return nil, err
+		}
+		if errMsg.Code == 0 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("%#v", errMsg)
+	}
+
 	fnMap := map[int]extractFunc{
 		ipctnlMsgCtNew:         extractAttributes,
 		ipctnlMsgCtGet:         extractAttributes,
