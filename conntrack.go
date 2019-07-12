@@ -361,10 +361,9 @@ func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
 		return nil
 	}
 
-	if join == true {
+	manage = nfct.Con.LeaveGroup
+	if join {
 		manage = nfct.Con.JoinGroup
-	} else {
-		manage = nfct.Con.LeaveGroup
 	}
 
 	switch t {
@@ -491,7 +490,8 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 type extractFunc func([]byte) (Conn, error)
 
 func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
-	if msg.Header.Type&netlink.Error == netlink.Error {
+
+	if msg.Header.Type == netlink.Error {
 		errMsg, err := unmarschalErrMsg(msg.Data)
 		if err != nil {
 			return nil, err
@@ -514,5 +514,5 @@ func parseConnectionMsg(msg netlink.Message, reqType int) (Conn, error) {
 		return fn(msg.Data)
 	}
 
-	return nil, fmt.Errorf("Unknown message type: 0x%02x", reqType)
+	return nil, fmt.Errorf("unknown message type: 0x%02x", reqType)
 }
