@@ -317,10 +317,9 @@ func (nfct *Nfct) manageGroups(t Table, groups uint32, join bool) error {
 		return nil
 	}
 
+	manage = nfct.Con.LeaveGroup
 	if join {
 		manage = nfct.Con.JoinGroup
-	} else {
-		manage = nfct.Con.LeaveGroup
 	}
 
 	switch t {

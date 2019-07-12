@@ -2,6 +2,7 @@ package conntrack
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -188,6 +189,10 @@ type ConnAttr struct {
 	Mask []byte
 	// Negates this attribute for filtering
 	Negate bool
+}
+
+func (ca ConnAttr) String() string {
+	return fmt.Sprintf("Type: %2d - Data: [%v] - Mask: [%v] - Negate: %t\n", ca.Type, ca.Data, ca.Mask, ca.Negate)
 }
 
 // ConnAttrType specifies the attribute of a connection
