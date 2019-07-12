@@ -32,7 +32,7 @@ func TestExtractAttributes(t *testing.T) {
 				t.Fatalf("different length:\n- want: %#v\n-  got: %#v", tc.conn, conn)
 			}
 			for i, v := range conn {
-				if bytes.Compare(v, (tc.conn)[i]) != 0 {
+				if !bytes.Equal(v, (tc.conn)[i]) {
 					fmt.Println(conn)
 					t.Fatalf("Unexpected return for 0x%2x %v\tgot:%v -- want:%v\n", i, i, v, (tc.conn)[i])
 				}
