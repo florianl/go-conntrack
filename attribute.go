@@ -138,7 +138,7 @@ func extractIP(logger *log.Logger, data []byte) (net.IP, net.IP, error) {
 		case ctaIPv6Dst:
 			dst = net.IP(ad.Bytes())
 		default:
-			return src, dst, fmt.Errorf("extractIP(): %d | %d\t %v\n", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+			return src, dst, fmt.Errorf("extractIP(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
 	}
 	return src, dst, nil
@@ -162,7 +162,7 @@ func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
 		case ctaTupleProto:
 		case ctaTupleZone:
 		default:
-			return fmt.Errorf("extractIPTuple(): %d | %d\t %v\n", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+			return fmt.Errorf("extractIPTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
 	}
 	return nil

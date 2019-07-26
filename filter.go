@@ -10,7 +10,7 @@ import (
 
 // Error which may occur when processing the filter attribute
 var (
-	ErrFilterAttrLength = errors.New("Incorrect length of filter attribute")
+	ErrFilterAttrLength = errors.New("incorrect length of filter attribute")
 )
 
 func nestFilter(filter FilterAttr) ([]byte, error) {

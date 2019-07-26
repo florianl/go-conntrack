@@ -12,11 +12,11 @@ import (
 
 // Various errors which may occur when processing filters
 var (
-	ErrFilterLength                  = errors.New("Number of filtering instructions are too high")
-	ErrFilterAttributeLength         = errors.New("Incorrect length of filter attribute")
-	ErrFilterAttributeMaskLength     = errors.New("Incorrect length of filter mask")
-	ErrFilterAttributeNotImplemented = errors.New("Filter attribute not implemented")
-	ErrFilterAttributeNegateMix      = errors.New("Can not mix negation for attribute of the same type")
+	ErrFilterLength                  = errors.New("number of filtering instructions are too high")
+	ErrFilterAttributeLength         = errors.New("incorrect length of filter attribute")
+	ErrFilterAttributeMaskLength     = errors.New("incorrect length of filter mask")
+	ErrFilterAttributeNotImplemented = errors.New("filter attribute not implemented")
+	ErrFilterAttributeNegateMix      = errors.New("can not mix negation for attribute of the same type")
 )
 
 // various consts from include/uapi/linux/bpf_common.h

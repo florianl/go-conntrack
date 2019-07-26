@@ -222,18 +222,18 @@ const (
 
 // Various errors which may occur when procressing a connection
 var (
-	ErrConnNoSrcIP = errors.New("Conn has no source IP")
-	ErrConnNoDstIP = errors.New("Conn has no destination IP")
-	ErrConnNoAttr  = errors.New("Conn has not this attribute")
+	ErrConnNoSrcIP = errors.New("conn has no source IP")
+	ErrConnNoDstIP = errors.New("conn has no destination IP")
+	ErrConnNoAttr  = errors.New("conn has not this attribute")
 )
 
 // Various errors which may occur when processing attributes
 var (
-	ErrAttrLength         = errors.New("Incorrect length of attribute")
-	ErrAttrNotImplemented = errors.New("Attribute not implemented")
-	ErrAttrNotExist       = errors.New("Type of attribute does not exist")
-	ErrDataLength         = errors.New("Incorrect length of provided data")
+	ErrAttrLength         = errors.New("incorrect length of attribute")
+	ErrAttrNotImplemented = errors.New("attribute not implemented")
+	ErrAttrNotExist       = errors.New("type of attribute does not exist")
+	ErrDataLength         = errors.New("incorrect length of provided data")
 )
 
 // ErrUnknownCtTable will be return, if the function can not be performed on this subsystem
-var ErrUnknownCtTable = errors.New("Not supported for this subsystem")
+var ErrUnknownCtTable = errors.New("not supported for this subsystem")

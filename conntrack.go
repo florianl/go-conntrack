@@ -268,7 +268,7 @@ func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
 		return nil
 	}
 
-	if join == true {
+	if join {
 		manage = nfct.Con.JoinGroup
 	} else {
 		manage = nfct.Con.LeaveGroup
@@ -406,5 +406,5 @@ func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqType int) (C
 		return fn(logger, msg.Data)
 	}
 
-	return Con{}, fmt.Errorf("Unknown message type: 0x%02x", reqType)
+	return Con{}, fmt.Errorf("unknown message type: 0x%02x", reqType)
 }
