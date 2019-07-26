@@ -114,6 +114,7 @@ func (nfct *Nfct) Dump(t Table, f Family) ([]Con, error) {
 
 // Create a new entry in the conntrack subsystem with certain attributes
 func (nfct *Nfct) Create(t Table, f Family, attributes []ConnAttr) error {
+	return fmt.Errorf("Not yet implemented")
 	if t != Conntrack {
 		return ErrUnknownCtTable
 	}
@@ -137,6 +138,7 @@ func (nfct *Nfct) Create(t Table, f Family, attributes []ConnAttr) error {
 
 // Update an existing conntrack entry
 func (nfct *Nfct) Update(t Table, f Family, attributes []ConnAttr) error {
+	return fmt.Errorf("Not yet implemented")
 	if t != Conntrack {
 		return ErrUnknownCtTable
 	}
@@ -160,6 +162,7 @@ func (nfct *Nfct) Update(t Table, f Family, attributes []ConnAttr) error {
 
 // Delete elements from the conntrack subsystem with certain attributes
 func (nfct *Nfct) Delete(t Table, f Family, filters []ConnAttr) error {
+	return fmt.Errorf("Not yet implemented")
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return err

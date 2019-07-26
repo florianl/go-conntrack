@@ -12,10 +12,10 @@ import (
 func TestFlush(t *testing.T) {
 	tests := []struct {
 		name   string
-		family CtFamily
+		family Family
 		want   []netlink.Message
 	}{
-		{name: "Flush IPv4", family: CtIPv4, want: []netlink.Message{
+		{name: "Flush IPv4", family: IPv4, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -33,7 +33,7 @@ func TestFlush(t *testing.T) {
 			},
 		},
 		},
-		{name: "Flush IPv6", family: CtIPv6, want: []netlink.Message{
+		{name: "Flush IPv6", family: IPv6, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -93,7 +93,7 @@ func TestFlush(t *testing.T) {
 			})
 			defer nfct.Con.Close()
 
-			if err := nfct.Flush(Ct, tc.family); err != nil {
+			if err := nfct.Flush(Conntrack, tc.family); err != nil {
 				t.Fatal(err)
 			}
 
@@ -191,7 +191,7 @@ func TestCreate(t *testing.T) {
 			})
 			defer nfct.Con.Close()
 
-			if err := nfct.Create(Ct, CtIPv4, tc.attributes); err != nil {
+			if err := nfct.Create(Conntrack, IPv4, tc.attributes); err != nil {
 				t.Fatal(err)
 			}
 		})

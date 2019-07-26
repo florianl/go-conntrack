@@ -120,6 +120,48 @@ const (
 
 const nlafNested = (1 << 15)
 
+func extractProtoTuple(logger *log.Logger, data []byte) (ProtoTuple, error) {
+	var proto ProtoTuple
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return proto, err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaProtoNum:
+			proto.Number = ad.Uint8()
+		case ctaProtoSrcPort:
+			tmp := ad.Uint16()
+			proto.SrcPort = &tmp
+		case ctaProtoDstPort:
+			tmp := ad.Uint16()
+			proto.DstPort = &tmp
+		case ctaProtoIcmpID:
+			tmp := ad.Uint16()
+			proto.IcmpID = &tmp
+		case ctaProtoIcmpType:
+			tmp := ad.Uint8()
+			proto.IcmpType = &tmp
+		case ctaProtoIcmpCode:
+			tmp := ad.Uint8()
+			proto.IcmpCode = &tmp
+		case ctaProtoIcmpv6ID:
+			tmp := ad.Uint16()
+			proto.Icmpv6ID = &tmp
+		case ctaProtoIcmpv6Type:
+			tmp := ad.Uint8()
+			proto.Icmpv6Type = &tmp
+		case ctaProtoIcmpv6Code:
+			tmp := ad.Uint8()
+			proto.Icmpv6Code = &tmp
+		default:
+			return proto, fmt.Errorf("extractProtoTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return proto, nil
+}
+
 func extractIP(logger *log.Logger, data []byte) (net.IP, net.IP, error) {
 	var src, dst net.IP
 	ad, err := netlink.NewAttributeDecoder(data)
@@ -160,6 +202,11 @@ func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
 			v.Src = src
 			v.Dst = dst
 		case ctaTupleProto:
+			proto, err := extractProtoTuple(logger, ad.Bytes())
+			if err != nil {
+				return err
+			}
+			v.Proto = proto
 		case ctaTupleZone:
 		default:
 			return fmt.Errorf("extractIPTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
@@ -190,11 +237,9 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 			c.Reply = tuple
 		case ctaID:
 			tmp := ad.Uint32()
-			logger.Printf("ID: %d", tmp)
 			c.ID = &tmp
 		case ctaStatus:
 			tmp := ad.Uint32()
-			logger.Printf("Status: %d", tmp)
 			c.Status = &tmp
 		default:
 			logger.Printf("extractAttribute() - Unknown attribute: %d %v\n", ad.Type(), ad.Bytes())

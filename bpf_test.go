@@ -11,13 +11,13 @@ import (
 func TestConstructFilter(t *testing.T) {
 	tests := []struct {
 		name     string
-		table    CtTable
+		table    Table
 		filters  []ConnAttr
 		rawInstr []bpf.RawInstruction
 		err      error
 	}{
 		// Example from libnetfilter_conntrack/utils/conntrack_filter.c
-		{name: "conntrack_filter.c", table: Ct, filters: []ConnAttr{
+		{name: "conntrack_filter.c", table: Conntrack, filters: []ConnAttr{
 			{Type: AttrOrigL4Proto, Data: []byte{0x11}}, // TCP
 			{Type: AttrOrigL4Proto, Data: []byte{0x06}}, // UDP
 			{Type: AttrTCPState, Data: []byte{0x3}},     // TCP_CONNTRACK_ESTABLISHED

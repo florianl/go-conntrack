@@ -47,8 +47,17 @@ func adjustWriteTimeout(nfct *Nfct, fn func() error) {
 	nfct.setWriteTimeout = fn
 }
 
-// ProtoTuple contains the source and destination IP
+// ProtoTuple contains information about the used protocol
 type ProtoTuple struct {
+	Number     uint8
+	SrcPort    *uint16
+	DstPort    *uint16
+	IcmpID     *uint16
+	IcmpType   *uint8
+	IcmpCode   *uint8
+	Icmpv6ID   *uint16
+	Icmpv6Type *uint8
+	Icmpv6Code *uint8
 }
 
 // IPTuple contains the source and destination IP
@@ -58,7 +67,7 @@ type IPTuple struct {
 	Proto ProtoTuple
 }
 
-// Conn contains all the information of a connection
+// Con contains all the information of a connection
 type Con struct {
 	Origin *IPTuple
 	Reply  *IPTuple
