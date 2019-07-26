@@ -292,7 +292,7 @@ func filterSubsys(subsys uint32) []bpf.RawInstruction {
 	return raw
 }
 
-func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, error) {
+func constructFilter(subsys Table, filters []ConnAttr) ([]bpf.RawInstruction, error) {
 	var raw []bpf.RawInstruction
 	filterMap := make(map[ConnAttrType][]ConnAttr)
 
@@ -338,7 +338,7 @@ func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, 
 	return raw, nil
 }
 
-func (nfct *Nfct) attachFilter(subsys CtTable, filters []ConnAttr) error {
+func (nfct *Nfct) attachFilter(subsys Table, filters []ConnAttr) error {
 
 	bpfFilters, err := constructFilter(subsys, filters)
 	if err != nil {

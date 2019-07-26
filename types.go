@@ -66,8 +66,8 @@ type Con struct {
 	Status *uint32
 }
 
-// CtTable specifies the subsystem of conntrack
-type CtTable int
+// Table specifies the subsystem of conntrack
+type Table int
 
 // NetlinkGroup represents a Netlink multicast group
 type NetlinkGroup uint32
@@ -82,13 +82,13 @@ const (
 	NetlinkCtExpectedDestroy NetlinkGroup = 1 << iota
 )
 
-// CtFamily specifies the network family
-type CtFamily uint8
+// Family specifies the network family
+type Family uint8
 
 // Supported family types
 const (
-	CtIPv6 CtFamily = unix.AF_INET6
-	CtIPv4 CtFamily = unix.AF_INET
+	IPv6 Family = unix.AF_INET6
+	IPv4 Family = unix.AF_INET
 )
 
 // FilterAttr represents a very basic filter

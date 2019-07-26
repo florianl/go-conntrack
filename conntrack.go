@@ -17,10 +17,10 @@ import (
 // Supported conntrack subsystems
 const (
 	// Conntrack table
-	Ct CtTable = unix.NFNL_SUBSYS_CTNETLINK
+	Conntrack Table = unix.NFNL_SUBSYS_CTNETLINK
 
 	// Conntrack expect table
-	CtExpected CtTable = unix.NFNL_SUBSYS_CTNETLINK_EXP
+	Expected Table = unix.NFNL_SUBSYS_CTNETLINK_EXP
 )
 
 const (
@@ -71,7 +71,7 @@ func (nfct *Nfct) Close() error {
 }
 
 // Flush a conntrack subsystem
-func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
+func (nfct *Nfct) Flush(t Table, f Family) error {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
@@ -80,9 +80,9 @@ func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 		Data: data,
 	}
 
-	if t == Ct {
+	if t == Conntrack {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtDelete)
-	} else if t == CtExpected {
+	} else if t == Expected {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpDelete)
 	} else {
 		return ErrUnknownCtTable
@@ -92,7 +92,7 @@ func (nfct *Nfct) Flush(t CtTable, f CtFamily) error {
 }
 
 // Dump a conntrack subsystem
-func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Con, error) {
+func (nfct *Nfct) Dump(t Table, f Family) ([]Con, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
@@ -101,9 +101,9 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Con, error) {
 		Data: data,
 	}
 
-	if t == Ct {
+	if t == Conntrack {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
-	} else if t == CtExpected {
+	} else if t == Expected {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
 	} else {
 		return nil, ErrUnknownCtTable
@@ -113,8 +113,8 @@ func (nfct *Nfct) Dump(t CtTable, f CtFamily) ([]Con, error) {
 }
 
 // Create a new entry in the conntrack subsystem with certain attributes
-func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
-	if t != Ct {
+func (nfct *Nfct) Create(t Table, f Family, attributes []ConnAttr) error {
+	if t != Conntrack {
 		return ErrUnknownCtTable
 	}
 
@@ -136,8 +136,8 @@ func (nfct *Nfct) Create(t CtTable, f CtFamily, attributes []ConnAttr) error {
 }
 
 // Update an existing conntrack entry
-func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error {
-	if t != Ct {
+func (nfct *Nfct) Update(t Table, f Family, attributes []ConnAttr) error {
+	if t != Conntrack {
 		return ErrUnknownCtTable
 	}
 
@@ -159,7 +159,7 @@ func (nfct *Nfct) Update(t CtTable, f CtFamily, attributes []ConnAttr) error {
 }
 
 // Delete elements from the conntrack subsystem with certain attributes
-func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
+func (nfct *Nfct) Delete(t Table, f Family, filters []ConnAttr) error {
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return err
@@ -174,9 +174,9 @@ func (nfct *Nfct) Delete(t CtTable, f CtFamily, filters []ConnAttr) error {
 		Data: data,
 	}
 
-	if t == Ct {
+	if t == Conntrack {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtDelete)
-	} else if t == CtExpected {
+	} else if t == Expected {
 		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpDelete)
 	} else {
 		return ErrUnknownCtTable
@@ -200,7 +200,7 @@ type HookFunc func(c Con) int
 
 // Register your function to receive events from a Netlinkgroup.
 // If your function returns something different than 0, it will stop.
-func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, fn HookFunc) error {
+func (nfct *Nfct) Register(ctx context.Context, t Table, group NetlinkGroup, fn HookFunc) error {
 	return nfct.register(ctx, t, group, []ConnAttr{}, fn)
 }
 
@@ -208,11 +208,11 @@ func (nfct *Nfct) Register(ctx context.Context, t CtTable, group NetlinkGroup, f
 // If your function returns something different than 0, it will stop.
 // ConnAttr of the same ConnAttrType will be linked by an OR operation.
 // Otherwise, ConnAttr of different ConnAttrType will be connected by an AND operation for the filter.
-func (nfct *Nfct) RegisterFiltered(ctx context.Context, t CtTable, group NetlinkGroup, filter []ConnAttr, fn HookFunc) error {
+func (nfct *Nfct) RegisterFiltered(ctx context.Context, t Table, group NetlinkGroup, filter []ConnAttr, fn HookFunc) error {
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
-func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, filter []ConnAttr, fn func(c Con) int) error {
+func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, filter []ConnAttr, fn func(c Con) int) error {
 	if err := nfct.manageGroups(t, uint32(groups), true); err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func (nfct *Nfct) register(ctx context.Context, t CtTable, groups NetlinkGroup, 
 	return nil
 }
 
-func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
+func (nfct *Nfct) manageGroups(t Table, groups uint32, join bool) error {
 	var manage func(group uint32) error
 
 	if groups == 0 {
@@ -275,7 +275,7 @@ func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
 	}
 
 	switch t {
-	case Ct:
+	case Conntrack:
 		mapping := map[uint32]uint32{
 			uint32(NetlinkCtNew):     1, // NFNLGRP_CONNTRACK_NEW
 			uint32(NetlinkCtUpdate):  2, // NFNLGRP_CONNTRACK_UPDATE
@@ -288,7 +288,7 @@ func (nfct *Nfct) manageGroups(t CtTable, groups uint32, join bool) error {
 				}
 			}
 		}
-	case CtExpected:
+	case Expected:
 		mapping := map[uint32]uint32{
 			uint32(NetlinkCtExpectedNew):     4, // NFNLGRP_CONNTRACK_EXP_NEW
 			uint32(NetlinkCtExpectedUpdate):  5, // NFNLGRP_CONNTRACK_EXP_UPDATE
