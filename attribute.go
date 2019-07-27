@@ -3,7 +3,6 @@
 package conntrack
 
 import (
-	"fmt"
 	"log"
 	"net"
 
@@ -12,30 +11,30 @@ import (
 )
 
 const (
-	ctaUnspec        = iota
-	ctaTupleOrig     = iota
-	ctaTupleReply    = iota
-	ctaStatus        = iota
-	ctaProtoinfo     = iota
-	ctaHelp          = iota
-	ctaNatSrc        = iota
-	ctaTimeout       = iota
-	ctaMark          = iota
-	ctaCountersOrig  = iota
-	ctaCountersReply = iota
-	ctaUse           = iota
-	ctaID            = iota
-	ctaNatDst        = iota
-	ctaTupleMaster   = iota
-	ctaSeqAdjOrig    = iota
-	ctaSeqAdjRepl    = iota
-	ctaSecmark       = iota
-	ctaZone          = iota
-	ctaSecCtx        = iota
-	ctaTimestamp     = iota
-	ctaMarkMask      = iota
-	ctaLables        = iota
-	ctaLablesMask    = iota
+	ctaUnspec = iota
+	ctaTupleOrig
+	ctaTupleReply
+	ctaStatus
+	ctaProtoinfo
+	ctaHelp
+	ctaNatSrc
+	ctaTimeout
+	ctaMark
+	ctaCountersOrig
+	ctaCountersReply
+	ctaUse
+	ctaID
+	ctaNatDst
+	ctaTupleMaster
+	ctaSeqAdjOrig
+	ctaSeqAdjRepl
+	ctaSecmark
+	ctaZone
+	ctaSecCtx
+	ctaTimestamp
+	ctaMarkMask
+	ctaLables
+	ctaLablesMask
 )
 
 const (
@@ -120,6 +119,86 @@ const (
 
 const nlafNested = (1 << 15)
 
+func extractCounter(v *Counter, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaCounterPackets:
+			tmp := ad.Uint64()
+			v.Packets = &tmp
+		case ctaCounterBytes:
+			tmp := ad.Uint64()
+			v.Bytes = &tmp
+		case ctaCounter32Packets:
+			tmp := ad.Uint32()
+			v.Packets32 = &tmp
+		case ctaCounter32Bytes:
+			tmp := ad.Uint32()
+			v.Bytes32 = &tmp
+		default:
+			logger.Printf("extractCounter(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return nil
+}
+
+func extractTCPInfo(v *TCPInfo, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaProtoinfoTCPState:
+			tmp := ad.Uint8()
+			v.State = &tmp
+		case ctaProtoinfoTCPWScaleOrig:
+			tmp := ad.Uint8()
+			v.WScaleOrig = &tmp
+		case ctaProtoinfoTCPWScaleRepl:
+			tmp := ad.Uint8()
+			v.WScaleRepl = &tmp
+		case ctaProtoinfoTCPFlagsOrig:
+			tmp := ad.Bytes()
+			v.FlagsOrig = &tmp
+		case ctaProtoinfoTCPFlagsRepl:
+			tmp := ad.Bytes()
+			v.FlagsReply = &tmp
+		default:
+			logger.Printf("extractTCPInfo(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return nil
+}
+
+func extractProtoInfo(v *ProtoInfo, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaProtoinfoTCP + nlafNested:
+			tcp := &TCPInfo{}
+			if err := extractTCPInfo(tcp, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			v.TCP = tcp
+		case ctaProtoinfoDCCP + nlafNested:
+		case ctaProtoinfoSCTP + nlafNested:
+		default:
+			logger.Printf("extractProtoInfo(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return nil
+}
+
 func extractProtoTuple(logger *log.Logger, data []byte) (ProtoTuple, error) {
 	var proto ProtoTuple
 	ad, err := netlink.NewAttributeDecoder(data)
@@ -156,7 +235,7 @@ func extractProtoTuple(logger *log.Logger, data []byte) (ProtoTuple, error) {
 			tmp := ad.Uint8()
 			proto.Icmpv6Code = &tmp
 		default:
-			return proto, fmt.Errorf("extractProtoTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+			logger.Printf("extractProtoTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
 	}
 	return proto, nil
@@ -180,7 +259,7 @@ func extractIP(logger *log.Logger, data []byte) (net.IP, net.IP, error) {
 		case ctaIPv6Dst:
 			dst = net.IP(ad.Bytes())
 		default:
-			return src, dst, fmt.Errorf("extractIP(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+			logger.Printf("extractIP(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
 	}
 	return src, dst, nil
@@ -208,8 +287,10 @@ func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
 			}
 			v.Proto = proto
 		case ctaTupleZone:
+			tmp := ad.Bytes()
+			v.Zone = &tmp
 		default:
-			return fmt.Errorf("extractIPTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+			logger.Printf("extractIPTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
 	}
 	return nil
@@ -235,14 +316,44 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 				return err
 			}
 			c.Reply = tuple
+		case ctaProtoinfo:
+			protoInfo := &ProtoInfo{}
+			if err := extractProtoInfo(protoInfo, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.ProtoInfo = protoInfo
 		case ctaID:
 			tmp := ad.Uint32()
 			c.ID = &tmp
 		case ctaStatus:
 			tmp := ad.Uint32()
 			c.Status = &tmp
+		case ctaUse:
+			tmp := ad.Uint32()
+			c.Use = &tmp
+		case ctaMark:
+			tmp := ad.Uint32()
+			c.Mark = &tmp
+		case ctaTimeout:
+			tmp := ad.Uint32()
+			c.Timeout = &tmp
+		case ctaCountersOrig:
+			orig := &Counter{}
+			if err := extractCounter(orig, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.CounterOrigin = orig
+		case ctaCountersReply:
+			reply := &Counter{}
+			if err := extractCounter(reply, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.CounterReply = reply
+		case ctaZone:
+			zone := ad.Uint16()
+			c.Zone = &zone
 		default:
-			logger.Printf("extractAttribute() - Unknown attribute: %d %v\n", ad.Type(), ad.Bytes())
+			logger.Printf("extractAttribute() - Unknown attribute: %d %d %v\n", ad.Type()&0xFF, ad.Type(), ad.Bytes())
 		}
 	}
 	return nil

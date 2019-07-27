@@ -47,6 +47,36 @@ func adjustWriteTimeout(nfct *Nfct, fn func() error) {
 	nfct.setWriteTimeout = fn
 }
 
+type TCPInfo struct {
+	State      *uint8
+	WScaleOrig *uint8
+	WScaleRepl *uint8
+	FlagsOrig  *[]byte
+	FlagsReply *[]byte
+}
+
+type DCCPInfo struct {
+	// todo
+}
+
+type SCTPInfo struct {
+	// todo
+}
+
+type Counter struct {
+	Packets   *uint64
+	Bytes     *uint64
+	Packets32 *uint32
+	Bytes32   *uint32
+}
+
+// ProtoInfo contains additional information to certain protocols
+type ProtoInfo struct {
+	TCP  *TCPInfo
+	DCCP *DCCPInfo
+	SCTP *SCTPInfo
+}
+
 // ProtoTuple contains information about the used protocol
 type ProtoTuple struct {
 	Number     uint8
@@ -65,14 +95,22 @@ type IPTuple struct {
 	Src   net.IP
 	Dst   net.IP
 	Proto ProtoTuple
+	Zone  *[]byte
 }
 
 // Con contains all the information of a connection
 type Con struct {
-	Origin *IPTuple
-	Reply  *IPTuple
-	ID     *uint32
-	Status *uint32
+	Origin        *IPTuple
+	Reply         *IPTuple
+	ProtoInfo     *ProtoInfo
+	CounterOrigin *Counter
+	CounterReply  *Counter
+	ID            *uint32
+	Status        *uint32
+	Use           *uint32
+	Mark          *uint32
+	Timeout       *uint32
+	Zone          *uint16
 }
 
 // Table specifies the subsystem of conntrack
