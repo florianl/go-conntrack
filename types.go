@@ -47,6 +47,15 @@ func adjustWriteTimeout(nfct *Nfct, fn func() error) {
 	nfct.setWriteTimeout = fn
 }
 
+type SecCtx struct {
+	Name *string
+}
+
+type Timestamp struct {
+	Start *time.Time
+	Stop  *time.Time
+}
+
 type TCPInfo struct {
 	State      *uint8
 	WScaleOrig *uint8
@@ -111,6 +120,8 @@ type Con struct {
 	Mark          *uint32
 	Timeout       *uint32
 	Zone          *uint16
+	Timestamp     *Timestamp
+	SecCtx        *SecCtx
 }
 
 // Table specifies the subsystem of conntrack
