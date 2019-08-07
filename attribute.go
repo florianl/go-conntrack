@@ -3,8 +3,10 @@
 package conntrack
 
 import (
+	"encoding/binary"
 	"log"
 	"net"
+	"time"
 
 	"github.com/mdlayher/netlink"
 	"golang.org/x/sys/unix"
@@ -101,6 +103,10 @@ const (
 )
 
 const (
+	ctaSecCtxName = 1
+)
+
+const (
 	ctaHelpName = 1
 	ctaHelpInfo = 2
 )
@@ -118,6 +124,47 @@ const (
 )
 
 const nlafNested = (1 << 15)
+
+func extractSecCtx(v *SecCtx, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = nativeEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaSecCtxName:
+			tmp := ad.String()
+			v.Name = &tmp
+		default:
+			logger.Printf("extractSecCtx(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return nil
+}
+
+func extractTimestamp(v *Timestamp, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = binary.BigEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaTimestampStart:
+			tmp := ad.Uint64()
+			ts := time.Unix(0, int64(tmp))
+			v.Start = &ts
+		case ctaTimestampStop:
+			tmp := ad.Uint64()
+			ts := time.Unix(0, int64(tmp))
+			v.Stop = &ts
+		default:
+			logger.Printf("extractTimestamp(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return nil
+}
 
 func extractCounter(v *Counter, logger *log.Logger, data []byte) error {
 	ad, err := netlink.NewAttributeDecoder(data)
@@ -352,6 +399,18 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 		case ctaZone:
 			zone := ad.Uint16()
 			c.Zone = &zone
+		case ctaSecCtx:
+			secCtx := &SecCtx{}
+			if err := extractSecCtx(secCtx, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.SecCtx = secCtx
+		case ctaTimestamp:
+			ts := &Timestamp{}
+			if err := extractTimestamp(ts, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.Timestamp = ts
 		default:
 			logger.Printf("extractAttribute() - Unknown attribute: %d %d %v\n", ad.Type()&0xFF, ad.Type(), ad.Bytes())
 		}
