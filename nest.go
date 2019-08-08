@@ -64,7 +64,7 @@ func nestAttributes(filters []ConnAttr) ([]byte, error) {
 			return nil, ErrAttrLength
 		}
 		switch filter.Type {
-		case AttrOrigIPv4Src, AttrOrigIPv4Dst, AttrOrigIPv6Src, AttrOrigIPv6Dst, AttrOrigL4Proto, AttrOrigPortSrc, AttrOrigPortDst, AttrIcmpType, AttrIcmpCode, AttrIcmpID:
+		case AttrOrigIPv4Src, AttrOrigIPv4Dst, AttrOrigIPv6Src, AttrOrigIPv6Dst, AttrOrigL4Proto, AttrOrigPortSrc, AttrOrigPortDst, AttrIcmpType, AttrIcmpCode, AttrIcmpID, AttrIcmpv6Type, AttrIcmpv6Code, AttrIcmpv6ID:
 			tupleOrig = append(tupleOrig, filter)
 		case AttrReplIPv4Src, AttrReplIPv4Dst, AttrReplIPv6Src, AttrReplIPv6Dst, AttrReplL4Proto, AttrReplPortSrc, AttrReplPortDst:
 			tupleRepl = append(tupleRepl, filter)
