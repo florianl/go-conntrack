@@ -113,8 +113,7 @@ func (nfct *Nfct) Dump(t Table, f Family) ([]Con, error) {
 }
 
 // Create a new entry in the conntrack subsystem with certain attributes
-func (nfct *Nfct) Create(t Table, f Family, attributes []ConnAttr) error {
-	return fmt.Errorf("Not yet implemented")
+func (nfct *Nfct) Create(t Table, f Family, attributes Con) error {
 	if t != Conntrack {
 		return ErrUnknownCtTable
 	}
@@ -136,9 +135,57 @@ func (nfct *Nfct) Create(t Table, f Family, attributes []ConnAttr) error {
 	return nfct.execute(req)
 }
 
+// Query conntrack subsystem with certain attributes
+func (nfct *Nfct) Query(t Table, f Family, filter FilterAttr) ([]Con, error) {
+	query, err := nestFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
+
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
+			Flags: netlink.Request | netlink.Dump,
+		},
+		Data: data,
+	}
+
+	if t == Conntrack {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
+	} else if t == Expected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
+	} else {
+		return nil, ErrUnknownCtTable
+	}
+	return nfct.query(req)
+}
+
+// Get returns matching conntrack entries with certain attributes
+func (nfct *Nfct) Get(t Table, f Family, match Con) ([]Con, error) {
+	if t != Conntrack {
+		return nil, ErrUnknownCtTable
+	}
+	query, err := nestAttributes(match)
+	if err != nil {
+		return []Con{}, err
+	}
+	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, unix.NFNL_SUBSYS_CTNETLINK)
+	data = append(data, query...)
+
+	req := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
+			Flags: netlink.Request | netlink.Acknowledge,
+		},
+		Data: data,
+	}
+	return nfct.query(req)
+}
+
 // Update an existing conntrack entry
-func (nfct *Nfct) Update(t Table, f Family, attributes []ConnAttr) error {
-	return fmt.Errorf("Not yet implemented")
+func (nfct *Nfct) Update(t Table, f Family, attributes Con) error {
 	if t != Conntrack {
 		return ErrUnknownCtTable
 	}
@@ -161,8 +208,7 @@ func (nfct *Nfct) Update(t Table, f Family, attributes []ConnAttr) error {
 }
 
 // Delete elements from the conntrack subsystem with certain attributes
-func (nfct *Nfct) Delete(t Table, f Family, filters []ConnAttr) error {
-	return fmt.Errorf("Not yet implemented")
+func (nfct *Nfct) Delete(t Table, f Family, filters Con) error {
 	query, err := nestAttributes(filters)
 	if err != nil {
 		return err
