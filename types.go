@@ -176,6 +176,10 @@ const (
 	AttrSNatIPv6                ConnAttrType = iota /* u128 bits */
 	AttrDNatIPv6                ConnAttrType = iota /* u128 bits */
 
+	AttrIcmpv6Type ConnAttrType = iota /* u8 bits */
+	AttrIcmpv6Code ConnAttrType = iota /* u8 bits */
+	AttrIcmpv6ID   ConnAttrType = iota /* u16 bits */
+
 	attrMax ConnAttrType = iota /* This is for internal use only	*/
 
 	AttrExpID     ConnAttrType = iota /* u32 bits */
