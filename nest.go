@@ -3,57 +3,35 @@
 package conntrack
 
 import (
+	"log"
+
 	"github.com/mdlayher/netlink"
 )
 
-func nestSubTuple(tupleType uint16, sub []netlink.Attribute) ([]byte, error) {
-	attr, err := netlink.MarshalAttributes(sub)
-	if err != nil {
-		return nil, err
-	}
+func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
+	ae := netlink.NewAttributeEncoder()
 
-	return netlink.MarshalAttributes([]netlink.Attribute{{
-		Type: tupleType | nlafNested,
-		Data: attr,
-	}})
-}
-
-func nestTuples(attrs []ConnAttr) ([]byte, error) {
-	subTuples := make(map[uint32][]netlink.Attribute)
-	var nestingTuple uint32
-	for _, x := range attrs {
-		if nestingTuple == 0 {
-			nestingTuple = filterCheck[x.Type].nest[0]
+	if filters.Origin != nil {
+		data, err := marshalIPTuple(logger, filters.Origin)
+		if err != nil {
+			return []byte{}, err
 		}
-		subNest := filterCheck[x.Type].nest[1]
-		subTuples[subNest] = append(subTuples[subNest], netlink.Attribute{Type: uint16(filterCheck[x.Type].ct), Data: x.Data})
+		ae.Bytes(ctaTupleOrig|nlafNested, data)
 	}
-
-	var tuple netlink.Attribute
-	tuple.Type = uint16(nestingTuple) | nlafNested
-	var data []byte
-
-	// We can not simple range over the map, because the order of selected items can vary
-	for key := 0; key <= int(attrMax); key++ {
-		if x, ok := subTuples[uint32(key)]; ok {
-			tmp, err := nestSubTuple(uint16(key), x)
-			if err != nil {
-				return nil, err
-			}
-			data = append(data, tmp...)
+	if filters.Reply != nil {
+		data, err := marshalIPTuple(logger, filters.Reply)
+		if err != nil {
+			return []byte{}, err
 		}
-		tuple.Data = data
+		ae.Bytes(ctaTupleReply|nlafNested, data)
 	}
 
-	return netlink.MarshalAttributes([]netlink.Attribute{tuple})
-}
-
-func nestAttributes(filters Con) ([]byte, error) {
-	var attrs []netlink.Attribute
-
-	attributes, err := netlink.MarshalAttributes(attrs)
-	if err != nil {
-		return nil, err
+	if filters.ID != nil {
+		ae.Uint32(ctaID, *filters.ID)
 	}
-	return attributes, nil
+	if filters.Mark != nil {
+		ae.Uint32(ctaMark, *filters.Mark)
+	}
+
+	return ae.Encode()
 }
