@@ -47,15 +47,18 @@ func adjustWriteTimeout(nfct *Nfct, fn func() error) {
 	nfct.setWriteTimeout = fn
 }
 
+// SecCtx contains additional information about the security context
 type SecCtx struct {
 	Name *string
 }
 
+// Timestamp contains start and/or stop times
 type Timestamp struct {
 	Start *time.Time
 	Stop  *time.Time
 }
 
+// TCPInfo contains additional information for TCP sessions
 type TCPInfo struct {
 	State      *uint8
 	WScaleOrig *uint8
@@ -64,14 +67,33 @@ type TCPInfo struct {
 	FlagsReply *[]byte
 }
 
+// DCCPInfo contains additional information for DCCP sessions
 type DCCPInfo struct {
-	// todo
+	State        *uint8
+	Role         *uint8
+	HandshakeSeq *uint64
 }
 
+// SCTPInfo contains additional information for SCTP sessions
 type SCTPInfo struct {
-	// todo
+	State        *uint8
+	VTagOriginal *uint32
+	VTagReply    *uint32
 }
 
+// Help contains additional information
+type Help struct {
+	Name *string
+}
+
+// SeqAdj contains additional information about corrections
+type SeqAdj struct {
+	CorrectionPos *uint32
+	OffsetBefore  *uint32
+	OffsetAfter   *uint32
+}
+
+// Counter contains additional information about the traffic
 type Counter struct {
 	Packets   *uint64
 	Bytes     *uint64
@@ -88,7 +110,7 @@ type ProtoInfo struct {
 
 // ProtoTuple contains information about the used protocol
 type ProtoTuple struct {
-	Number     uint8
+	Number     *uint8
 	SrcPort    *uint16
 	DstPort    *uint16
 	IcmpID     *uint16
@@ -101,9 +123,9 @@ type ProtoTuple struct {
 
 // IPTuple contains the source and destination IP
 type IPTuple struct {
-	Src   net.IP
-	Dst   net.IP
-	Proto ProtoTuple
+	Src   *net.IP
+	Dst   *net.IP
+	Proto *ProtoTuple
 	Zone  *[]byte
 }
 
@@ -114,6 +136,9 @@ type Con struct {
 	ProtoInfo     *ProtoInfo
 	CounterOrigin *Counter
 	CounterReply  *Counter
+	Help          *Help
+	SeqAdjOrig    *SeqAdj
+	SeqAdjRepl    *SeqAdj
 	ID            *uint32
 	Status        *uint32
 	Use           *uint32
