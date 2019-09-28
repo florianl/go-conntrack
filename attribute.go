@@ -124,7 +124,7 @@ func extractSecCtx(v *SecCtx, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaSecCtxName:
@@ -165,7 +165,7 @@ func extractCounter(v *Counter, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaCounterPackets:
@@ -192,7 +192,7 @@ func extractDCCPInfo(v *DCCPInfo, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaProtoinfoDCCPState:
@@ -216,7 +216,7 @@ func extractSCTPInfo(v *SCTPInfo, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaProtoinfoSCTPState:
@@ -240,7 +240,7 @@ func extractSeqAdj(v *SeqAdj, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaSeqAdjCorrPos:
@@ -264,7 +264,7 @@ func extractTCPInfo(v *TCPInfo, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaProtoinfoTCPState:
@@ -293,13 +293,19 @@ func marshalTCPInfo(logger *log.Logger, v *TCPInfo) ([]byte, error) {
 	ae := netlink.NewAttributeEncoder()
 
 	if v.State != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint8(ctaProtoinfoTCPState, *v.State)
+		ae.ByteOrder = nativeEndian
 	}
 	if v.WScaleOrig != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint8(ctaProtoinfoTCPWScaleOrig, *v.WScaleOrig)
+		ae.ByteOrder = nativeEndian
 	}
 	if v.WScaleRepl != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint8(ctaProtoinfoTCPWScaleRepl, *v.WScaleRepl)
+		ae.ByteOrder = nativeEndian
 	}
 	if v.FlagsOrig != nil {
 		ae.Bytes(ctaProtoinfoTCPFlagsOrig, *v.FlagsOrig)
@@ -363,7 +369,7 @@ func extractHelp(v *Help, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaHelpName:
@@ -382,7 +388,7 @@ func extractProtoTuple(logger *log.Logger, data []byte) (ProtoTuple, error) {
 	if err != nil {
 		return proto, err
 	}
-	ad.ByteOrder = nativeEndian
+	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaProtoNum:
@@ -421,7 +427,7 @@ func extractProtoTuple(logger *log.Logger, data []byte) (ProtoTuple, error) {
 
 func marshalProtoTuple(logger *log.Logger, v *ProtoTuple) ([]byte, error) {
 	ae := netlink.NewAttributeEncoder()
-
+	ae.ByteOrder = binary.BigEndian
 	if v.Number != nil {
 		ae.Uint8(ctaProtoNum, *v.Number)
 	}
@@ -533,14 +539,14 @@ func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
 }
 
 func marshalIPTuple(logger *log.Logger, v *IPTuple) ([]byte, error) {
-	var attrs []netlink.Attribute
+	ae := netlink.NewAttributeEncoder()
 
 	if v.Src != nil || v.Dst != nil {
 		data, err := marshalIP(logger, v)
 		if err != nil {
 			return []byte{}, err
 		}
-		attrs = append(attrs, netlink.Attribute{Type: ctaTupleIP | nlafNested, Data: data})
+		ae.Bytes(ctaTupleIP|nlafNested, data)
 	}
 
 	if v.Proto != nil {
@@ -548,10 +554,10 @@ func marshalIPTuple(logger *log.Logger, v *IPTuple) ([]byte, error) {
 		if err != nil {
 			return []byte{}, err
 		}
-		attrs = append(attrs, netlink.Attribute{Type: ctaTupleProto | nlafNested, Data: data})
+		ae.Bytes(ctaTupleProto|nlafNested, data)
 	}
 
-	return netlink.MarshalAttributes(attrs)
+	return ae.Encode()
 }
 
 func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
@@ -559,7 +565,6 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
 	for ad.Next() {
 		switch ad.Type() & 0xFF {
 		case ctaTupleOrig:
@@ -587,23 +592,35 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 			}
 			c.Help = help
 		case ctaID:
+			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
 			c.ID = &tmp
+			ad.ByteOrder = nativeEndian
 		case ctaStatus:
+			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
 			c.Status = &tmp
+			ad.ByteOrder = nativeEndian
 		case ctaUse:
+			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
 			c.Use = &tmp
+			ad.ByteOrder = nativeEndian
 		case ctaMark:
+			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
 			c.Mark = &tmp
+			ad.ByteOrder = nativeEndian
 		case ctaMarkMask:
+			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
 			c.MarkMask = &tmp
+			ad.ByteOrder = nativeEndian
 		case ctaTimeout:
+			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
 			c.Timeout = &tmp
+			ad.ByteOrder = nativeEndian
 		case ctaCountersOrig:
 			orig := &Counter{}
 			if err := extractCounter(orig, logger, ad.Bytes()); err != nil {
@@ -629,8 +646,10 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 			}
 			c.SeqAdjRepl = reply
 		case ctaZone:
+			ad.ByteOrder = binary.BigEndian
 			zone := ad.Uint16()
 			c.Zone = &zone
+			ad.ByteOrder = nativeEndian
 		case ctaSecCtx:
 			secCtx := &SecCtx{}
 			if err := extractSecCtx(secCtx, logger, ad.Bytes()); err != nil {

@@ -3,6 +3,7 @@
 package conntrack
 
 import (
+	"encoding/binary"
 	"log"
 
 	"github.com/mdlayher/netlink"
@@ -27,21 +28,31 @@ func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 	}
 
 	if filters.ID != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint32(ctaID, *filters.ID)
+		ae.ByteOrder = nativeEndian
 	}
 	if filters.Mark != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint32(ctaMark, *filters.Mark)
+		ae.ByteOrder = nativeEndian
 	}
 
 	if filters.MarkMask != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint32(ctaMarkMask, *filters.MarkMask)
+		ae.ByteOrder = nativeEndian
 	}
 
 	if filters.Timeout != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint32(ctaTimeout, *filters.Timeout)
+		ae.ByteOrder = nativeEndian
 	}
 	if filters.Status != nil {
+		ae.ByteOrder = binary.BigEndian
 		ae.Uint32(ctaStatus, *filters.Status)
+		ae.ByteOrder = nativeEndian
 	}
 	if filters.ProtoInfo != nil {
 		data, err := marshalProtoInfo(logger, filters.ProtoInfo)
