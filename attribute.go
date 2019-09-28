@@ -484,8 +484,8 @@ func marshalIP(logger *log.Logger, v *IPTuple) ([]byte, error) {
 		if v.Src.To4() == nil && v.Src.To16() != nil {
 			ae.Bytes(ctaIPv6Src, *v.Src)
 		} else {
-			tmp := *v.Src
-			ae.Bytes(ctaIPv4Src, tmp[12:])
+			tmp := (*v.Src).To4()
+			ae.Bytes(ctaIPv4Src, tmp)
 		}
 	}
 
@@ -493,8 +493,8 @@ func marshalIP(logger *log.Logger, v *IPTuple) ([]byte, error) {
 		if v.Dst.To4() == nil && v.Dst.To16() != nil {
 			ae.Bytes(ctaIPv6Dst, *v.Dst)
 		} else {
-			tmp := *v.Dst
-			ae.Bytes(ctaIPv4Dst, tmp[12:])
+			tmp := (*v.Dst).To4()
+			ae.Bytes(ctaIPv4Dst, tmp)
 		}
 	}
 
