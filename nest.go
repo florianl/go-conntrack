@@ -3,7 +3,6 @@
 package conntrack
 
 import (
-	"encoding/binary"
 	"log"
 
 	"github.com/mdlayher/netlink"
@@ -11,8 +10,6 @@ import (
 
 func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 	ae := netlink.NewAttributeEncoder()
-
-	ae.ByteOrder = binary.BigEndian
 
 	if filters.Origin != nil {
 		data, err := marshalIPTuple(logger, filters.Origin)
@@ -34,6 +31,10 @@ func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 	}
 	if filters.Mark != nil {
 		ae.Uint32(ctaMark, *filters.Mark)
+	}
+
+	if filters.MarkMask != nil {
+		ae.Uint32(ctaMarkMask, *filters.MarkMask)
 	}
 
 	if filters.Timeout != nil {

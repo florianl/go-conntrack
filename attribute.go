@@ -598,6 +598,9 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 		case ctaMark:
 			tmp := ad.Uint32()
 			c.Mark = &tmp
+		case ctaMarkMask:
+			tmp := ad.Uint32()
+			c.MarkMask = &tmp
 		case ctaTimeout:
 			tmp := ad.Uint32()
 			c.Timeout = &tmp

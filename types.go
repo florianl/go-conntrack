@@ -143,6 +143,7 @@ type Con struct {
 	Status        *uint32
 	Use           *uint32
 	Mark          *uint32
+	MarkMask      *uint32
 	Timeout       *uint32
 	Zone          *uint16
 	Timestamp     *Timestamp
