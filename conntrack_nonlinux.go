@@ -31,7 +31,7 @@ func (nfct *Nfct) Dump(_ Table, _ Family) ([]Con, error) { return nil, ErrNotLin
 func (nfct *Nfct) Flush(_ Table, _ Family) error { return ErrNotLinux }
 
 // Create returns an error, as this packages highly depends on the netfilter subsystem of the linux kernel
-func (nfct *Nfct) Create(_ Table, _ Family, _ []ConnAttr) error { return ErrNotLinux }
+func (nfct *Nfct) Create(_ Table, _ Family, _ Con) error { return ErrNotLinux }
 
 // Query returns an error, as this packages highly depends on the netfilter subsystem of the linux kernel
 func (nfct *Nfct) Query(_ Table, _ Family, _ FilterAttr) ([]Con, error) { return nil, ErrNotLinux }
@@ -50,12 +50,12 @@ func (nfct *Nfct) RegisterFiltered(_ context.Context, _ Table, _ NetlinkGroup, _
 func ParseAttributes(_ []byte) (Con, error) { return Con{}, ErrNotLinux }
 
 // Update an existing conntrack entry
-func (nfct *Nfct) Update(t Table, f Family, attributes []ConnAttr) error { return ErrNotLinux }
+func (nfct *Nfct) Update(t Table, f Family, attributes Con) error { return ErrNotLinux }
 
 // Delete elements from the conntrack subsystem with certain attributes
-func (nfct *Nfct) Delete(t Table, f Family, filters []ConnAttr) error { return ErrNotLinux }
+func (nfct *Nfct) Delete(t Table, f Family, filters Con) error { return ErrNotLinux }
 
 // Get returns matching conntrack entries with certain attributes
-func (nfct *Nfct) Get(_ Table, _ Family, _ []ConnAttr) ([]Con, error) {
+func (nfct *Nfct) Get(_ Table, _ Family, _ Con) ([]Con, error) {
 	return nil, ErrNotLinux
 }
