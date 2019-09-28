@@ -57,25 +57,14 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 		t.Fatalf("Could not dump sessions: %v", err)
 	}
 
-	var attrs []ConnAttr
-	var oldMark []byte
-
 	for _, c := range conns {
 
 	}
-
-	if len(attrs) == 0 {
-		t.Fatalf("Could not get ping session from dump")
-	}
-
-	// Set a new mark
-	attrs = append(attrs, ConnAttr{Type: AttrMark, Data: []byte{0xAA, 0xFF, 0xAA, 0xFF}})
 
 	// Update the conntrack entry
 	if err := nfct.Update(Conntrack, IPv4, attrs); err != nil {
 		t.Fatalf("Could not update conntrack entry: %v", err)
 	}
-	attrs = attrs[:len(attrs)-1]
 
 	c, err := nfct.Get(Conntrack, IPv4, attrs)
 	if err != nil {
@@ -85,11 +74,8 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 		t.Fatalf("Could not find unique ping sessiond")
 	}
 
-	var newMark []byte
-	if _, ok := c[0][AttrMark]; ok {
-		newMark = c[0][AttrMark]
-	}
 }
+
 
 func TestLinuxConntrackDeleteEntry(t *testing.T) {
 	// ping is needed to create a session, we can work with

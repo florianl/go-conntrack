@@ -118,7 +118,7 @@ func (nfct *Nfct) Create(t Table, f Family, attributes Con) error {
 		return ErrUnknownCtTable
 	}
 
-	query, err := nestAttributes(attributes)
+	query, err := nestAttributes(nfct.logger, &attributes)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (nfct *Nfct) Get(t Table, f Family, match Con) ([]Con, error) {
 	if t != Conntrack {
 		return nil, ErrUnknownCtTable
 	}
-	query, err := nestAttributes(match)
+	query, err := nestAttributes(nfct.logger, &match)
 	if err != nil {
 		return []Con{}, err
 	}
@@ -190,7 +190,7 @@ func (nfct *Nfct) Update(t Table, f Family, attributes Con) error {
 		return ErrUnknownCtTable
 	}
 
-	query, err := nestAttributes(attributes)
+	query, err := nestAttributes(nfct.logger, &attributes)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (nfct *Nfct) Update(t Table, f Family, attributes Con) error {
 
 // Delete elements from the conntrack subsystem with certain attributes
 func (nfct *Nfct) Delete(t Table, f Family, filters Con) error {
-	query, err := nestAttributes(filters)
+	query, err := nestAttributes(nfct.logger, &filters)
 	if err != nil {
 		return err
 	}
@@ -429,6 +429,10 @@ func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
 		if err != nil {
 			return nil, err
 		}
+		// check if c is an empty struct
+		if (Con{}) == c {
+			break
+		}
 		conn = append(conn, c)
 	}
 	return conn, nil
@@ -444,6 +448,17 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 type extractFunc func(*log.Logger, []byte) (Con, error)
 
 func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqType int) (Con, error) {
+
+	if msg.Header.Type == netlink.Error {
+		errMsg, err := unmarschalErrMsg(msg.Data)
+		if err != nil {
+			return Con{}, err
+		}
+		if errMsg.Code == 0 {
+			return Con{}, nil
+		}
+		return Con{}, fmt.Errorf("%#v", errMsg)
+	}
 
 	fnMap := map[int]extractFunc{
 		ipctnlMsgCtNew:    extractAttributes,
