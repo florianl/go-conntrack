@@ -29,6 +29,7 @@ func compare(a, b []byte) int {
 }
 
 func TestLinuxConntrackUpdatePing(t *testing.T) {
+	t.Skip()
 	// ping is needed to create a session, we can work with
 	_, err := exec.LookPath("ping")
 	if err != nil {
@@ -76,8 +77,8 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 
 }
 
-
 func TestLinuxConntrackDeleteEntry(t *testing.T) {
+	t.Skip()
 	// ping is needed to create a session, we can work with
 	_, err := exec.LookPath("ping")
 	if err != nil {
