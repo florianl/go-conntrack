@@ -12,11 +12,11 @@ import (
 
 // Various errors which may occur when processing filters
 var (
-	ErrFilterLength                  = errors.New("Number of filtering instructions are too high")
-	ErrFilterAttributeLength         = errors.New("Incorrect length of filter attribute")
-	ErrFilterAttributeMaskLength     = errors.New("Incorrect length of filter mask")
-	ErrFilterAttributeNotImplemented = errors.New("Filter attribute not implemented")
-	ErrFilterAttributeNegateMix      = errors.New("Can not mix negation for attribute of the same type")
+	ErrFilterLength                  = errors.New("number of filtering instructions are too high")
+	ErrFilterAttributeLength         = errors.New("incorrect length of filter attribute")
+	ErrFilterAttributeMaskLength     = errors.New("incorrect length of filter mask")
+	ErrFilterAttributeNotImplemented = errors.New("filter attribute not implemented")
+	ErrFilterAttributeNegateMix      = errors.New("can not mix negation for attribute of the same type")
 )
 
 // various consts from include/uapi/linux/bpf_common.h
@@ -220,7 +220,7 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	if nested != 0 {
 		for _, nest := range filterCheck[filters[0].Type].nest {
 			// find nest attribute
-			tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(nest)}
+			tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: nest}
 			raw = append(raw, tmp)
 			tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
 			raw = append(raw, tmp)
@@ -285,7 +285,7 @@ func filterSubsys(subsys uint32) []bpf.RawInstruction {
 	raw = append(raw, tmp)
 
 	// A == subsys ? jump + 1 : accept
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, Jt: 1, K: uint32(subsys)}
+	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, Jt: 1, K: subsys}
 	raw = append(raw, tmp)
 
 	// verdict -> accept
@@ -295,7 +295,7 @@ func filterSubsys(subsys uint32) []bpf.RawInstruction {
 	return raw
 }
 
-func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, error) {
+func constructFilter(subsys Table, filters []ConnAttr) ([]bpf.RawInstruction, error) {
 	var raw []bpf.RawInstruction
 	filterMap := make(map[ConnAttrType][]ConnAttr)
 
@@ -341,7 +341,7 @@ func constructFilter(subsys CtTable, filters []ConnAttr) ([]bpf.RawInstruction, 
 	return raw, nil
 }
 
-func (nfct *Nfct) attachFilter(subsys CtTable, filters []ConnAttr) error {
+func (nfct *Nfct) attachFilter(subsys Table, filters []ConnAttr) error {
 
 	bpfFilters, err := constructFilter(subsys, filters)
 	if err != nil {

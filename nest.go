@@ -3,105 +3,64 @@
 package conntrack
 
 import (
+	"encoding/binary"
+	"log"
+
 	"github.com/mdlayher/netlink"
 )
 
-func nestSubTuple(tupleType uint16, sub []netlink.Attribute) ([]byte, error) {
-	attr, err := netlink.MarshalAttributes(sub)
-	if err != nil {
-		return nil, err
-	}
+func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
+	ae := netlink.NewAttributeEncoder()
 
-	return netlink.MarshalAttributes([]netlink.Attribute{{
-		Type: tupleType | nlafNested,
-		Data: attr,
-	}})
-}
-
-func nestTuples(attrs []ConnAttr) ([]byte, error) {
-	subTuples := make(map[uint32][]netlink.Attribute)
-	var nestingTuple uint32
-	for _, x := range attrs {
-		if nestingTuple == 0 {
-			nestingTuple = filterCheck[x.Type].nest[0]
-		}
-		subNest := filterCheck[x.Type].nest[1]
-		subTuples[subNest] = append(subTuples[subNest], netlink.Attribute{Type: uint16(filterCheck[x.Type].ct), Data: x.Data})
-	}
-
-	var tuple netlink.Attribute
-	tuple.Type = uint16(nestingTuple) | nlafNested
-	var data []byte
-
-	// We can not simple range over the map, because the order of selected items can vary
-	for key := 0; key <= int(attrMax); key++ {
-		if x, ok := subTuples[uint32(key)]; ok {
-			tmp, err := nestSubTuple(uint16(key), x)
-			if err != nil {
-				return nil, err
-			}
-			data = append(data, tmp...)
-		}
-		tuple.Data = data
-	}
-
-	return netlink.MarshalAttributes([]netlink.Attribute{tuple})
-}
-
-func nestAttributes(filters []ConnAttr) ([]byte, error) {
-	var attributes []byte
-	var attrs []netlink.Attribute
-	var tupleOrig, tupleRepl, tupleProto []ConnAttr
-
-	for _, filter := range filters {
-		if _, ok := filterCheck[filter.Type]; !ok {
-			return nil, ErrAttrNotExist
-		}
-		if filterCheck[filter.Type].ct == ctaUnspec {
-			return nil, ErrAttrNotImplemented
-		}
-		if len(filter.Data) != filterCheck[filter.Type].len {
-			return nil, ErrAttrLength
-		}
-		switch filter.Type {
-		case AttrOrigIPv4Src, AttrOrigIPv4Dst, AttrOrigIPv6Src, AttrOrigIPv6Dst, AttrOrigL4Proto, AttrOrigPortSrc, AttrOrigPortDst, AttrIcmpType, AttrIcmpCode, AttrIcmpID, AttrIcmpv6Type, AttrIcmpv6Code, AttrIcmpv6ID:
-			tupleOrig = append(tupleOrig, filter)
-		case AttrReplIPv4Src, AttrReplIPv4Dst, AttrReplIPv6Src, AttrReplIPv6Dst, AttrReplL4Proto, AttrReplPortSrc, AttrReplPortDst:
-			tupleRepl = append(tupleRepl, filter)
-		case AttrTCPFlagsOrig, AttrTCPFlagsRepl, AttrTCPState, AttrTCPWScaleOrig, AttrTCPWScaleRepl, AttrSctpState, AttrSctpVtagOrig, AttrSctpVtagRepl, AttrDccpState, AttrDccpRole, AttrDccpHandshakeSeq:
-			tupleProto = append(tupleProto, filter)
-		default:
-			attrs = append(attrs, netlink.Attribute{Type: uint16(filterCheck[filter.Type].ct), Data: filter.Data})
-		}
-	}
-
-	if len(tupleOrig) != 0 {
-		data, err := nestTuples(tupleOrig)
+	if filters.Origin != nil {
+		data, err := marshalIPTuple(logger, filters.Origin)
 		if err != nil {
-			return nil, err
+			return []byte{}, err
 		}
-		attributes = append(attributes, data...)
+		ae.Bytes(ctaTupleOrig|nlafNested, data)
 	}
-	if len(tupleRepl) != 0 {
-		data, err := nestTuples(tupleRepl)
+	if filters.Reply != nil {
+		data, err := marshalIPTuple(logger, filters.Reply)
 		if err != nil {
-			return nil, err
+			return []byte{}, err
 		}
-		attributes = append(attributes, data...)
-	}
-	if len(tupleProto) != 0 {
-		data, err := nestTuples(tupleProto)
-		if err != nil {
-			return nil, err
-		}
-		attributes = append(attributes, data...)
-
+		ae.Bytes(ctaTupleReply|nlafNested, data)
 	}
 
-	regular, err := netlink.MarshalAttributes(attrs)
-	if err != nil {
-		return nil, err
+	if filters.ID != nil {
+		ae.ByteOrder = binary.BigEndian
+		ae.Uint32(ctaID, *filters.ID)
+		ae.ByteOrder = nativeEndian
 	}
-	attributes = append(attributes, regular...)
-	return attributes, nil
+	if filters.Mark != nil {
+		ae.ByteOrder = binary.BigEndian
+		ae.Uint32(ctaMark, *filters.Mark)
+		ae.ByteOrder = nativeEndian
+	}
+
+	if filters.MarkMask != nil {
+		ae.ByteOrder = binary.BigEndian
+		ae.Uint32(ctaMarkMask, *filters.MarkMask)
+		ae.ByteOrder = nativeEndian
+	}
+
+	if filters.Timeout != nil {
+		ae.ByteOrder = binary.BigEndian
+		ae.Uint32(ctaTimeout, *filters.Timeout)
+		ae.ByteOrder = nativeEndian
+	}
+	if filters.Status != nil {
+		ae.ByteOrder = binary.BigEndian
+		ae.Uint32(ctaStatus, *filters.Status)
+		ae.ByteOrder = nativeEndian
+	}
+	if filters.ProtoInfo != nil {
+		data, err := marshalProtoInfo(logger, filters.ProtoInfo)
+		if err != nil {
+			return []byte{}, err
+		}
+		ae.Bytes(ctaProtoinfo|nlafNested, data)
+	}
+
+	return ae.Encode()
 }

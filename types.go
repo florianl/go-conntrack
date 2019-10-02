@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/mdlayher/netlink"
-	"github.com/mdlayher/netlink/nlenc"
 	"golang.org/x/sys/unix"
 )
 
@@ -49,11 +48,111 @@ func adjustWriteTimeout(nfct *Nfct, fn func() error) {
 	nfct.setWriteTimeout = fn
 }
 
-// Conn contains all the information of a connection
-type Conn map[ConnAttrType][]byte
+// SecCtx contains additional information about the security context
+type SecCtx struct {
+	Name *string
+}
 
-// CtTable specifies the subsystem of conntrack
-type CtTable int
+// Timestamp contains start and/or stop times
+type Timestamp struct {
+	Start *time.Time
+	Stop  *time.Time
+}
+
+// TCPInfo contains additional information for TCP sessions
+type TCPInfo struct {
+	State      *uint8
+	WScaleOrig *uint8
+	WScaleRepl *uint8
+	FlagsOrig  *[]byte
+	FlagsReply *[]byte
+}
+
+// DCCPInfo contains additional information for DCCP sessions
+type DCCPInfo struct {
+	State        *uint8
+	Role         *uint8
+	HandshakeSeq *uint64
+}
+
+// SCTPInfo contains additional information for SCTP sessions
+type SCTPInfo struct {
+	State        *uint8
+	VTagOriginal *uint32
+	VTagReply    *uint32
+}
+
+// Help contains additional information
+type Help struct {
+	Name *string
+}
+
+// SeqAdj contains additional information about corrections
+type SeqAdj struct {
+	CorrectionPos *uint32
+	OffsetBefore  *uint32
+	OffsetAfter   *uint32
+}
+
+// Counter contains additional information about the traffic
+type Counter struct {
+	Packets   *uint64
+	Bytes     *uint64
+	Packets32 *uint32
+	Bytes32   *uint32
+}
+
+// ProtoInfo contains additional information to certain protocols
+type ProtoInfo struct {
+	TCP  *TCPInfo
+	DCCP *DCCPInfo
+	SCTP *SCTPInfo
+}
+
+// ProtoTuple contains information about the used protocol
+type ProtoTuple struct {
+	Number     *uint8
+	SrcPort    *uint16
+	DstPort    *uint16
+	IcmpID     *uint16
+	IcmpType   *uint8
+	IcmpCode   *uint8
+	Icmpv6ID   *uint16
+	Icmpv6Type *uint8
+	Icmpv6Code *uint8
+}
+
+// IPTuple contains the source and destination IP
+type IPTuple struct {
+	Src   *net.IP
+	Dst   *net.IP
+	Proto *ProtoTuple
+	Zone  *[]byte
+}
+
+// Con contains all the information of a connection
+type Con struct {
+	Origin        *IPTuple
+	Reply         *IPTuple
+	ProtoInfo     *ProtoInfo
+	CounterOrigin *Counter
+	CounterReply  *Counter
+	Help          *Help
+	SeqAdjOrig    *SeqAdj
+	SeqAdjRepl    *SeqAdj
+	ID            *uint32
+	Status        *uint32
+	Use           *uint32
+	Mark          *uint32
+	MarkMask      *uint32
+	Timeout       *uint32
+	Zone          *uint16
+	Timestamp     *Timestamp
+	SecCtx        *SecCtx
+}
+
+// Table specifies the subsystem of conntrack
+type Table int
 
 // NetlinkGroup represents a Netlink multicast group
 type NetlinkGroup uint32
@@ -68,13 +167,13 @@ const (
 	NetlinkCtExpectedDestroy NetlinkGroup = 1 << iota
 )
 
-// CtFamily specifies the network family
-type CtFamily uint8
+// Family specifies the network family
+type Family uint8
 
 // Supported family types
 const (
-	CtIPv6 CtFamily = unix.AF_INET6
-	CtIPv4 CtFamily = unix.AF_INET
+	IPv6 Family = unix.AF_INET6
+	IPv4 Family = unix.AF_INET
 )
 
 // FilterAttr represents a very basic filter
@@ -231,71 +330,3 @@ var (
 
 // ErrUnknownCtTable will be return, if the function can not be performed on this subsystem
 var ErrUnknownCtTable = errors.New("not supported for this subsystem")
-
-// OrigSrcIP returns the net.IP representation of the source IP
-func (c Conn) OrigSrcIP() (net.IP, error) {
-	if data, ok := c[AttrOrigIPv6Src]; ok {
-		ip := net.IP(data)
-		return ip, nil
-	} else if data, ok := c[AttrOrigIPv4Src]; ok {
-		ip := net.IPv4(data[0], data[1], data[2], data[3])
-		return ip, nil
-	}
-	return nil, ErrConnNoSrcIP
-}
-
-// OrigDstIP returns the net.IP representation of the destination IP
-func (c Conn) OrigDstIP() (net.IP, error) {
-	if data, ok := c[AttrOrigIPv6Dst]; ok {
-		ip := net.IP(data)
-		return ip, nil
-	} else if data, ok := c[AttrOrigIPv4Dst]; ok {
-		ip := net.IPv4(data[0], data[1], data[2], data[3])
-		return ip, nil
-	}
-	return nil, ErrConnNoSrcIP
-}
-
-// Uint8 returns the uint8 representation of the given attribute's data.
-func (c Conn) Uint8(attr ConnAttrType) (uint8, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 1 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint8(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
-
-// Uint16 returns the uint16 representation of the given attribute's data.
-func (c Conn) Uint16(attr ConnAttrType) (uint16, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 2 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint16(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
-
-// Uint32 returns the uint32 representation of the given attribute's data.
-func (c Conn) Uint32(attr ConnAttrType) (uint32, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 4 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint32(data), nil
-	}
-	return 0, ErrConnNoAttr
-}
-
-// Uint64 returns the uint64 representation of the given attribute's data.
-func (c Conn) Uint64(attr ConnAttrType) (uint64, error) {
-	if data, ok := c[attr]; ok {
-		if len(data) != 8 {
-			return 0, ErrAttrLength
-		}
-		return nlenc.Uint64(data), nil
-	}
-	return 0, ErrConnNoAttr
-}

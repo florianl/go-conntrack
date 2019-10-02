@@ -3,6 +3,7 @@
 package conntrack
 
 import (
+	"net"
 	"testing"
 
 	"github.com/mdlayher/netlink"
@@ -12,10 +13,10 @@ import (
 func TestFlush(t *testing.T) {
 	tests := []struct {
 		name   string
-		family CtFamily
+		family Family
 		want   []netlink.Message
 	}{
-		{name: "Flush IPv4", family: CtIPv4, want: []netlink.Message{
+		{name: "Flush IPv4", family: IPv4, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -33,7 +34,7 @@ func TestFlush(t *testing.T) {
 			},
 		},
 		},
-		{name: "Flush IPv6", family: CtIPv6, want: []netlink.Message{
+		{name: "Flush IPv6", family: IPv6, want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -93,7 +94,7 @@ func TestFlush(t *testing.T) {
 			})
 			defer nfct.Con.Close()
 
-			if err := nfct.Flush(Ct, tc.family); err != nil {
+			if err := nfct.Flush(Conntrack, tc.family); err != nil {
 				t.Fatal(err)
 			}
 
@@ -102,12 +103,21 @@ func TestFlush(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+
+	srcIP := net.ParseIP("1.1.1.1")
+	dstIP := net.ParseIP("2.2.2.2")
+	var tcp uint8 = 17
+	var srcPort uint16 = 22
+	var dstPort uint16 = 10
+	var timeout uint32 = 100
+	var tcpState uint8 = 8
+
 	tests := []struct {
 		name       string
-		attributes []ConnAttr
+		attributes Con
 		want       []netlink.Message
 	}{
-		{name: "noAttributes", attributes: []ConnAttr{}, want: []netlink.Message{
+		{name: "noAttributes", want: []netlink.Message{
 			{
 				Header: netlink.Header{
 					Length: 20,
@@ -125,31 +135,28 @@ func TestCreate(t *testing.T) {
 			},
 		}},
 		// Example from libnetfilter_conntrack/utils/conntrack_create.c
-		{name: "conntrack_create.c", attributes: []ConnAttr{
-			{Type: AttrOrigIPv4Src, Data: []byte{0x1, 0x1, 0x1, 0x1}}, // SrcIP
-			{Type: AttrOrigIPv4Dst, Data: []byte{0x2, 0x2, 0x2, 0x2}}, // DstIP
-			{Type: AttrOrigL4Proto, Data: []byte{0x11}},               // TCP
-			{Type: AttrOrigPortSrc, Data: []byte{0x00, 0x14}},         // SrcPort
-			{Type: AttrOrigPortDst, Data: []byte{0x00, 0x0A}},         // DstPort
-			{Type: AttrTCPState, Data: []byte{0x1}},                   // TCP-State
-			{Type: AttrTimeout, Data: []byte{0x00, 0x00, 0x00, 0x64}}, // Timeout
-		}, want: []netlink.Message{
-			{
-				Header: netlink.Header{
-					Length: 80,
-					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_NEW
-					Type: netlink.HeaderType(1<<8 | 0),
-					// NLM_F_REQUEST|NLM_F_CREATE|NLM_F_ACK|NLM_F_EXCL
-					Flags: netlink.Request | netlink.Create | netlink.Acknowledge | netlink.Excl,
-					// Can and will be ignored
-					Sequence: 0,
-					// Can and will be ignored
-					PID: nltest.PID,
+		{name: "conntrack_create.c", attributes: Con{
+			Origin:    &IPTuple{Src: &srcIP, Dst: &dstIP, Proto: &ProtoTuple{Number: &tcp, SrcPort: &srcPort, DstPort: &dstPort}},
+			Reply:     &IPTuple{Src: &dstIP, Dst: &srcIP, Proto: &ProtoTuple{Number: &tcp, SrcPort: &dstPort, DstPort: &srcPort}},
+			Timeout:   &timeout,
+			ProtoInfo: &ProtoInfo{TCP: &TCPInfo{State: &tcpState}}},
+			want: []netlink.Message{
+				{
+					Header: netlink.Header{
+						Length: 80,
+						// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_NEW
+						Type: netlink.HeaderType(1<<8 | 0),
+						// NLM_F_REQUEST|NLM_F_CREATE|NLM_F_ACK|NLM_F_EXCL
+						Flags: netlink.Request | netlink.Create | netlink.Acknowledge | netlink.Excl,
+						// Can and will be ignored
+						Sequence: 0,
+						// Can and will be ignored
+						PID: nltest.PID,
+					},
+					// nfgen_family=AF_INET, version=NFNETLINK_V0, NFNL_SUBSYS_CTNETLINK + netlinkes Attributes
+					Data: []byte{0x2, 0x0, 0x0, 0x1, 0x34, 0x0, 0x1, 0x80, 0x14, 0x0, 0x1, 0x80, 0x8, 0x0, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x8, 0x0, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x1c, 0x0, 0x2, 0x80, 0x5, 0x0, 0x1, 0x0, 0x11, 0x0, 0x0, 0x0, 0x6, 0x0, 0x2, 0x0, 0x0, 0x16, 0x0, 0x0, 0x6, 0x0, 0x3, 0x0, 0x0, 0xa, 0x0, 0x0, 0x34, 0x0, 0x2, 0x80, 0x14, 0x0, 0x1, 0x80, 0x8, 0x0, 0x1, 0x0, 0x2, 0x2, 0x2, 0x2, 0x8, 0x0, 0x2, 0x0, 0x1, 0x1, 0x1, 0x1, 0x1c, 0x0, 0x2, 0x80, 0x5, 0x0, 0x1, 0x0, 0x11, 0x0, 0x0, 0x0, 0x6, 0x0, 0x2, 0x0, 0x0, 0xa, 0x0, 0x0, 0x6, 0x0, 0x3, 0x0, 0x0, 0x16, 0x0, 0x0, 0x8, 0x0, 0x7, 0x0, 0x0, 0x0, 0x0, 0x64, 0x10, 0x0, 0x4, 0x80, 0xc, 0x0, 0x1, 0x80, 0x5, 0x0, 0x1, 0x0, 0x8, 0x0, 0x0, 0x0},
 				},
-				// nfgen_family=AF_INET, version=NFNETLINK_V0, NFNL_SUBSYS_CTNETLINKa + netlinkes Attributes
-				Data: []byte{0x2, 0x0, 0x0, 0x1, 0x34, 0x0, 0x1, 0x80, 0x14, 0x0, 0x1, 0x80, 0x8, 0x0, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x8, 0x0, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x1c, 0x0, 0x2, 0x80, 0x5, 0x0, 0x1, 0x0, 0x11, 0x0, 0x0, 0x0, 0x6, 0x0, 0x2, 0x0, 0x0, 0x14, 0x0, 0x0, 0x6, 0x0, 0x3, 0x0, 0x0, 0xa, 0x0, 0x0, 0x10, 0x0, 0x4, 0x80, 0xc, 0x0, 0x1, 0x80, 0x5, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0x8, 0x0, 0x7, 0x0, 0x0, 0x0, 0x0, 0x64},
-			},
-		}},
+			}},
 	}
 
 	for _, tc := range tests {
@@ -191,7 +198,7 @@ func TestCreate(t *testing.T) {
 			})
 			defer nfct.Con.Close()
 
-			if err := nfct.Create(Ct, CtIPv4, tc.attributes); err != nil {
+			if err := nfct.Create(Conntrack, IPv4, tc.attributes); err != nil {
 				t.Fatal(err)
 			}
 		})
