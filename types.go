@@ -7,8 +7,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/florianl/go-conntrack/internal/unix"
+
 	"github.com/mdlayher/netlink"
-	"golang.org/x/sys/unix"
 )
 
 // Config contains options for a Conn.

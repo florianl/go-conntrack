@@ -1,5 +1,3 @@
-//+build linux
-
 package conntrack
 
 import (
@@ -9,9 +7,10 @@ import (
 	"log"
 	"unsafe"
 
+	"github.com/florianl/go-conntrack/internal/unix"
+
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
-	"golang.org/x/sys/unix"
 )
 
 // Supported conntrack subsystems

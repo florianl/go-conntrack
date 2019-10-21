@@ -1,5 +1,3 @@
-// +build linux,!386
-
 package conntrack
 
 import (

@@ -1,12 +1,13 @@
-//+build !go1.12,linux
+//+build !go1.12
 
 package conntrack
 
 import (
 	"log"
 
+	"github.com/florianl/go-conntrack/internal/unix"
+
 	"github.com/mdlayher/netlink"
-	"golang.org/x/sys/unix"
 )
 
 // Open a connection to the conntrack subsystem
