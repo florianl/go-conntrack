@@ -1,5 +1,3 @@
-//+build linux
-
 package conntrack
 
 import (
@@ -8,8 +6,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/florianl/go-conntrack/internal/unix"
+
 	"github.com/mdlayher/netlink"
-	"golang.org/x/sys/unix"
 )
 
 const (

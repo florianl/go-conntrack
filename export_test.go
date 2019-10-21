@@ -1,5 +1,3 @@
-//+build linux
-
 package conntrack
 
 // Export for testing
