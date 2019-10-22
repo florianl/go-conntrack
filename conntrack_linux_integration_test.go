@@ -41,7 +41,7 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 
 	var pingSession Con
 	for _, c := range cons {
-		if *c.Origin.Proto.Number != 1 {
+		if c.Origin == nil || c.Origin.Proto == nil || c.Origin.Proto.Number == nil || *c.Origin.Proto.Number != 1 {
 			continue
 		}
 		if (*c.Origin.Src).Equal(net.ParseIP("127.0.0.1")) && (*c.Origin.Dst).Equal(net.ParseIP("127.0.0.2")) {
@@ -106,7 +106,7 @@ func TestLinuxConntrackDeleteEntry(t *testing.T) {
 	var origConntrackID uint32
 
 	for _, c := range conns {
-		if *c.Origin.Proto.Number != 1 {
+		if c.Origin == nil || c.Origin.Proto == nil || c.Origin.Proto.Number == nil || *c.Origin.Proto.Number != 1 {
 			continue
 		}
 		if (*c.Origin.Src).Equal(net.ParseIP("127.0.0.1")) && (*c.Origin.Dst).Equal(net.ParseIP("127.0.0.4")) {
