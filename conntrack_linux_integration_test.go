@@ -50,6 +50,10 @@ func TestLinuxConntrackUpdatePing(t *testing.T) {
 		}
 	}
 
+	if pingSession.Mark == nil {
+		t.Logf("could not identify ping session")
+		return
+	}
 	origMark := *pingSession.Mark
 
 	*pingSession.Mark = 0xFF00AA11
