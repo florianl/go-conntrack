@@ -1,9 +1,9 @@
 language: go
 
 go:
-    - "1.10"
     - "1.11.x"
     - "1.12.x"
+    - "1.13.x"
     - master
 
 os:
@@ -18,7 +18,7 @@ before_install:
 
 script:
     - go vet ./...
-    - golint -set_exit_status ./...
+    - golint -set_exit_status $(go list ./... | grep -v internal/unix)
     - go test -v -race ./...
-    - go test -c -tags integration .
+    - go test -c -race -tags integration .
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo ./go-conntrack.test -test.v ; fi
