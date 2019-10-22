@@ -110,7 +110,7 @@ func TestLinuxConntrackDeleteEntry(t *testing.T) {
 	var origConntrackID uint32
 
 	for _, c := range conns {
-		if c.Origin == nil || c.Origin.Proto == nil || c.Origin.Proto.Number == nil || *c.Origin.Proto.Number != 1 {
+		if c.Origin == nil || c.Origin.Src == nil || c.Origin.Dst == nil {
 			continue
 		}
 		if (*c.Origin.Src).Equal(net.ParseIP("127.0.0.1")) && (*c.Origin.Dst).Equal(net.ParseIP("127.0.0.4")) {
@@ -130,6 +130,9 @@ func TestLinuxConntrackDeleteEntry(t *testing.T) {
 	}
 
 	for _, c := range conns2 {
+		if c.Origin == nil || c.Origin.Src == nil || c.Origin.Dst == nil {
+			continue
+		}
 		if (*c.Origin.Src).Equal(net.ParseIP("127.0.0.1")) && (*c.Origin.Dst).Equal(net.ParseIP("127.0.0.4")) {
 			if *c.ID == origConntrackID {
 				t.Fatalf("original ping session was not deleted")
