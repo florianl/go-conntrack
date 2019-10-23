@@ -138,7 +138,7 @@ func encodeValue(data []byte) (val uint32) {
 	case 1:
 		val = uint32(data[0])
 	case 2:
-		val = binary.BigEndian.Uint32(data)
+		val = uint32(binary.BigEndian.Uint16(data))
 	case 4:
 		val = binary.BigEndian.Uint32(data)
 	}
