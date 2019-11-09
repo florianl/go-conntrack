@@ -324,19 +324,19 @@ func extractProtoInfo(v *ProtoInfo, logger *log.Logger, data []byte) error {
 	ad.ByteOrder = nativeEndian
 	for ad.Next() {
 		switch ad.Type() {
-		case ctaProtoinfoTCP + nlafNested:
+		case ctaProtoinfoTCP:
 			tcp := &TCPInfo{}
 			if err := extractTCPInfo(tcp, logger, ad.Bytes()); err != nil {
 				return err
 			}
 			v.TCP = tcp
-		case ctaProtoinfoDCCP + nlafNested:
+		case ctaProtoinfoDCCP:
 			dccp := &DCCPInfo{}
 			if err := extractDCCPInfo(dccp, logger, ad.Bytes()); err != nil {
 				return err
 			}
 			v.DCCP = dccp
-		case ctaProtoinfoSCTP + nlafNested:
+		case ctaProtoinfoSCTP:
 			sctp := &SCTPInfo{}
 			if err := extractSCTPInfo(sctp, logger, ad.Bytes()); err != nil {
 				return err
@@ -513,7 +513,7 @@ func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
 	}
 	ad.ByteOrder = nativeEndian
 	for ad.Next() {
-		switch ad.Type() + nlafNested {
+		switch ad.Type() {
 		case ctaTupleIP:
 			src, dst, err := extractIP(logger, ad.Bytes())
 			if err != nil {
@@ -565,7 +565,7 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 		return err
 	}
 	for ad.Next() {
-		switch ad.Type() & 0xFF {
+		switch ad.Type() {
 		case ctaTupleOrig:
 			tuple := &IPTuple{}
 			if err := extractIPTuple(tuple, logger, ad.Bytes()); err != nil {
