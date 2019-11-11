@@ -131,6 +131,26 @@ type IPTuple struct {
 	Zone  *[]byte
 }
 
+// NatInfo contains addition NAT information of a connection
+type NatInfo struct {
+	Dir   *uint32
+	Tuple *IPTuple
+}
+
+// Exp extends the information of a connection by information from the expected table
+type Exp struct {
+	Mask       *IPTuple
+	Tuple      *IPTuple
+	Flags      *uint32
+	Class      *uint32
+	ID         *uint32
+	Timeout    *uint32
+	Zone       *uint16
+	HelperName *string
+	Fn         *string
+	Nat        *NatInfo
+}
+
 // Con contains all the information of a connection
 type Con struct {
 	Origin        *IPTuple
@@ -150,6 +170,7 @@ type Con struct {
 	Zone          *uint16
 	Timestamp     *Timestamp
 	SecCtx        *SecCtx
+	Exp           *Exp
 }
 
 // Table specifies the subsystem of conntrack
