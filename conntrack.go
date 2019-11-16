@@ -294,7 +294,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 			}
 
 			for _, msg := range reply {
-				c, err := parseConnectionMsg(nfct.logger, msg, int(msg.Header.Type)&0xF)
+				c, err := parseConnectionMsg(nfct.logger, msg, (int(msg.Header.Type)&0x300)>>8, int(msg.Header.Type)&0xF)
 				if err != nil {
 					nfct.logger.Printf("could not parse received message: %v", err)
 				}
@@ -423,7 +423,7 @@ func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
 
 	var conn []Con
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(nfct.logger, msg, int(req.Header.Type)&0xF)
+		c, err := parseConnectionMsg(nfct.logger, msg, (int(req.Header.Type)&0x300)>>8, int(req.Header.Type)&0xF)
 		if err != nil {
 			return nil, err
 		}
@@ -445,7 +445,7 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 
 type extractFunc func(*log.Logger, []byte) (Con, error)
 
-func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqType int) (Con, error) {
+func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqTable, reqType int) (Con, error) {
 
 	if msg.Header.Type == netlink.Error {
 		errMsg, err := unmarschalErrMsg(msg.Data)
@@ -458,10 +458,21 @@ func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqType int) (C
 		return Con{}, fmt.Errorf("%#v", errMsg)
 	}
 
-	fnMap := map[int]extractFunc{
-		ipctnlMsgCtNew:    extractAttributes,
-		ipctnlMsgCtGet:    extractAttributes,
-		ipctnlMsgCtDelete: extractAttributes,
+	var fnMap map[int]extractFunc
+
+	switch reqTable {
+	case unix.NFNL_SUBSYS_CTNETLINK:
+		fnMap = map[int]extractFunc{
+			ipctnlMsgCtNew:    extractAttributes,
+			ipctnlMsgCtGet:    extractAttributes,
+			ipctnlMsgCtDelete: extractAttributes,
+		}
+	case unix.NFNL_SUBSYS_CTNETLINK_EXP:
+		fnMap = map[int]extractFunc{
+			ipctnlMsgExpGet: extractExpectAttributes,
+		}
+	default:
+		return Con{}, fmt.Errorf("unknown conntrack table")
 	}
 
 	if fn, ok := fnMap[reqType]; ok {
