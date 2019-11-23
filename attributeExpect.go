@@ -59,6 +59,9 @@ func extractAttributeExpect(c *Con, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
+
+	c.Exp = &Exp{}
+
 	for ad.Next() {
 		switch ad.Type() {
 		case ctaExpMaster:
