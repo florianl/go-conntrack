@@ -23,21 +23,21 @@ const (
 )
 
 const (
-	ipctnlMsgCtNew            = iota
-	ipctnlMsgCtGet            = iota
-	ipctnlMsgCtDelete         = iota
-	ipctnlMsgCtGetCtrZero     = iota
-	ipctnlMsgCtGetStatsCPU    = iota
-	ipctnlMsgCtGetStats       = iota
-	ipctnlMsgCtGetDying       = iota
-	ipctnlMsgCtGetUnconfirmed = iota
+	ipctnlMsgCtNew = iota
+	ipctnlMsgCtGet
+	ipctnlMsgCtDelete
+	ipctnlMsgCtGetCtrZero
+	ipctnlMsgCtGetStatsCPU
+	ipctnlMsgCtGetStats
+	ipctnlMsgCtGetDying
+	ipctnlMsgCtGetUnconfirmed
 )
 
 const (
-	ipctnlMsgExpNew         = iota
-	ipctnlMsgExpGet         = iota
-	ipctnlMsgExpDelete      = iota
-	ipctnlMsgExpGetStatsCPU = iota
+	ipctnlMsgExpNew = iota
+	ipctnlMsgExpGet
+	ipctnlMsgExpDelete
+	ipctnlMsgExpGetStatsCPU
 )
 
 // for detailes see https://github.com/tensorflow/tensorflow/blob/master/tensorflow/go/tensor.go#L488-L505
@@ -208,6 +208,10 @@ func (nfct *Nfct) Update(t Table, f Family, attributes Con) error {
 
 // Delete elements from the conntrack subsystem with certain attributes
 func (nfct *Nfct) Delete(t Table, f Family, filters Con) error {
+	if t != Conntrack {
+		return ErrUnknownCtTable
+	}
+
 	query, err := nestAttributes(nfct.logger, &filters)
 	if err != nil {
 		return err
@@ -273,7 +277,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 				nfct.logger.Printf("could not remove filter: %v", err)
 			}
 			if err := nfct.manageGroups(t, uint32(groups), false); err != nil {
-				nfct.logger.Printf("could not unsubscribe grom group: %v", err)
+				nfct.logger.Printf("could not unsubscribe from group: %v", err)
 			}
 
 		}()
@@ -321,35 +325,33 @@ func (nfct *Nfct) manageGroups(t Table, groups uint32, join bool) error {
 		manage = nfct.Con.JoinGroup
 	}
 
+	var mapping map[uint32]uint32
+	var nlGroups []NetlinkGroup
 	switch t {
 	case Conntrack:
-		mapping := map[uint32]uint32{
+		mapping = map[uint32]uint32{
 			uint32(NetlinkCtNew):     1, // NFNLGRP_CONNTRACK_NEW
 			uint32(NetlinkCtUpdate):  2, // NFNLGRP_CONNTRACK_UPDATE
 			uint32(NetlinkCtDestroy): 3, // NFNLGRP_CONNTRACK_DESTROY
 		}
-		for _, v := range []NetlinkGroup{NetlinkCtNew, NetlinkCtUpdate, NetlinkCtDestroy} {
-			if groups&uint32(v) == uint32(v) {
-				if err := manage(mapping[groups&uint32(v)]); err != nil {
-					return err
-				}
-			}
-		}
+		nlGroups = append(nlGroups, []NetlinkGroup{NetlinkCtNew, NetlinkCtUpdate, NetlinkCtDestroy}...)
 	case Expected:
-		mapping := map[uint32]uint32{
+		mapping = map[uint32]uint32{
 			uint32(NetlinkCtExpectedNew):     4, // NFNLGRP_CONNTRACK_EXP_NEW
 			uint32(NetlinkCtExpectedUpdate):  5, // NFNLGRP_CONNTRACK_EXP_UPDATE
 			uint32(NetlinkCtExpectedDestroy): 6, // NFNLGRP_CONNTRACK_EXP_DESTROY
 		}
-		for _, v := range []NetlinkGroup{NetlinkCtExpectedNew, NetlinkCtExpectedUpdate, NetlinkCtExpectedDestroy} {
-			if groups&uint32(v) == uint32(v) {
-				if err := manage(mapping[groups&uint32(v)]); err != nil {
-					return err
-				}
-			}
-		}
+		nlGroups = append(nlGroups, []NetlinkGroup{NetlinkCtExpectedNew, NetlinkCtExpectedUpdate, NetlinkCtExpectedDestroy}...)
 	default:
 		return ErrUnknownCtTable
+	}
+
+	for _, v := range nlGroups {
+		if groups&uint32(v) == uint32(v) {
+			if err := manage(mapping[groups&uint32(v)]); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -469,7 +471,9 @@ func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqTable, reqTy
 		}
 	case unix.NFNL_SUBSYS_CTNETLINK_EXP:
 		fnMap = map[int]extractFunc{
-			ipctnlMsgExpGet: extractExpectAttributes,
+			ipctnlMsgExpNew:    extractExpectAttributes,
+			ipctnlMsgExpGet:    extractExpectAttributes,
+			ipctnlMsgExpDelete: extractExpectAttributes,
 		}
 	default:
 		return Con{}, fmt.Errorf("unknown conntrack table")
