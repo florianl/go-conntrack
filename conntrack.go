@@ -15,10 +15,10 @@ import (
 
 // Supported conntrack subsystems
 const (
-	// Conntrack table
+	// Conntrack is the default table containing a list of all tracked connections
 	Conntrack Table = unix.NFNL_SUBSYS_CTNETLINK
 
-	// Conntrack expect table
+	// Expected is a table containing information about related connections to existing ones
 	Expected Table = unix.NFNL_SUBSYS_CTNETLINK_EXP
 )
 
