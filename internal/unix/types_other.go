@@ -3,6 +3,7 @@
 package unix
 
 const (
+	AF_UNSPEC                 = 0x0
 	AF_INET                   = 0x2
 	AF_INET6                  = 0xa
 	NFNETLINK_V0              = 0x0
