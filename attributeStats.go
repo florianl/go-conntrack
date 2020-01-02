@@ -36,6 +36,10 @@ func extractCPUStats(s *CPUStat, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
+
+	// the CPU ID does not have its own attribute
+	s.ID = binary.BigEndian.Uint32(data[0:4])
+
 	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
@@ -78,6 +82,10 @@ func extractExpCPUStats(s *CPUStat, logger *log.Logger, data []byte) error {
 	if err != nil {
 		return err
 	}
+
+	// the CPU ID does not have its own attribute
+	s.ID = binary.BigEndian.Uint32(data[0:4])
+
 	ad.ByteOrder = binary.BigEndian
 	for ad.Next() {
 		switch ad.Type() {
