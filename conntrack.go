@@ -237,6 +237,25 @@ func (nfct *Nfct) Delete(t Table, f Family, filters Con) error {
 	return nfct.execute(req)
 }
 
+// DumpCPUStats dumps per CPU statistics
+func (nfct *Nfct) DumpCPUStats(t Table) ([]CPUStat, error) {
+	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
+	req := netlink.Message{
+		Header: netlink.Header{
+			Flags: netlink.Request | netlink.Dump,
+		},
+		Data: data,
+	}
+	if t == Conntrack {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStatsCPU)
+	} else if t == Expected {
+		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGetStatsCPU)
+	} else {
+		return nil, ErrUnknownCtTable
+	}
+	return nfct.getCPUStats(req)
+}
+
 // ParseAttributes extracts all the attributes from the given data
 func ParseAttributes(logger *log.Logger, data []byte) (Con, error) {
 	// At least 2 bytes are needed for the header check
@@ -402,22 +421,31 @@ func (nfct *Nfct) execute(req netlink.Message) error {
 	return nil
 }
 
-func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
+func (nfct *Nfct) send(req netlink.Message) error {
 	if err := nfct.setWriteTimeout(); err != nil {
 		nfct.logger.Printf("could not set write timeout: %v", err)
 	}
 	verify, err := nfct.Con.Send(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := netlink.Validate(req, []netlink.Message{verify}); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := nfct.setReadTimeout(); err != nil {
 		nfct.logger.Printf("could not set read timeout: %v", err)
 	}
+	return nil
+}
+
+func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
+
+	if err := nfct.send(req); err != nil {
+		return nil, err
+	}
+
 	reply, err := nfct.Con.Receive()
 	if err != nil {
 		return nil, err
@@ -436,6 +464,52 @@ func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
 		conn = append(conn, c)
 	}
 	return conn, nil
+}
+
+func (nfct *Nfct) getCPUStats(req netlink.Message) ([]CPUStat, error) {
+	var stats []CPUStat
+	if err := nfct.send(req); err != nil {
+		return nil, err
+	}
+	reply, err := nfct.Con.Receive()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, msg := range reply {
+		if msg.Header.Type == netlink.Error {
+			errMsg, err := unmarschalErrMsg(msg.Data)
+			if err != nil {
+				nfct.logger.Printf("could not unmarshal ErrMsg: %v", err)
+				continue
+			}
+			if errMsg.Code == 0 {
+				continue
+			}
+			nfct.logger.Printf("unknown error: %v", errMsg)
+			continue
+		}
+
+		var stat CPUStat
+		offset := checkHeader(msg.Data[:2])
+		switch Table((int(req.Header.Type) & 0x300) >> 8) {
+		case Conntrack:
+			if err := extractCPUStats(&stat, nfct.logger, msg.Data[offset:]); err != nil {
+				nfct.logger.Printf("could not extract CPU stats: %v", err)
+				continue
+			}
+		case Expected:
+			if err := extractExpCPUStats(&stat, nfct.logger, msg.Data[offset:]); err != nil {
+				nfct.logger.Printf("could not extract CPU stats: %v", err)
+				continue
+			}
+		default:
+			return nil, fmt.Errorf("unknown table")
+		}
+
+		stats = append(stats, stat)
+	}
+	return stats, nil
 }
 
 // /include/uapi/linux/netfilter/nfnetlink.h:struct nfgenmsg{} res_id is Big Endian
