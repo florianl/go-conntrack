@@ -113,10 +113,6 @@ func (nfct *Nfct) Dump(t Table, f Family) ([]Con, error) {
 
 // Create a new entry in the conntrack subsystem with certain attributes
 func (nfct *Nfct) Create(t Table, f Family, attributes Con) error {
-	if t != Conntrack {
-		return ErrUnknownCtTable
-	}
-
 	query, err := nestAttributes(nfct.logger, &attributes)
 	if err != nil {
 		return err
