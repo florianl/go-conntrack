@@ -83,9 +83,10 @@ type SCTPInfo struct {
 	VTagReply    *uint32
 }
 
-// Help contains additional information
-type Help struct {
+// Helper contains additional information
+type Helper struct {
 	Name *string
+	Info *string
 }
 
 // SeqAdj contains additional information about corrections
@@ -139,8 +140,9 @@ type NatInfo struct {
 
 // Exp extends the information of a connection by information from the expected table
 type Exp struct {
-	Mask       *IPTuple
+	Master     *IPTuple
 	Tuple      *IPTuple
+	Mask       *IPTuple
 	Flags      *uint32
 	Class      *uint32
 	ID         *uint32
@@ -158,7 +160,7 @@ type Con struct {
 	ProtoInfo     *ProtoInfo
 	CounterOrigin *Counter
 	CounterReply  *Counter
-	Help          *Help
+	Helper        *Helper
 	SeqAdjOrig    *SeqAdj
 	SeqAdjRepl    *SeqAdj
 	ID            *uint32

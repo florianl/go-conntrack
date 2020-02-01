@@ -363,7 +363,7 @@ func marshalProtoInfo(logger *log.Logger, v *ProtoInfo) ([]byte, error) {
 	return ae.Encode()
 }
 
-func extractHelp(v *Help, logger *log.Logger, data []byte) error {
+func extractHelper(v *Helper, logger *log.Logger, data []byte) error {
 	ad, err := netlink.NewAttributeDecoder(data)
 	if err != nil {
 		return err
@@ -374,11 +374,27 @@ func extractHelp(v *Help, logger *log.Logger, data []byte) error {
 		case ctaHelpName:
 			tmp := ad.String()
 			v.Name = &tmp
+		case ctaHelpInfo:
+			tmp := ad.String()
+			v.Info = &tmp
 		default:
-			logger.Printf("extractHelp(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+			logger.Printf("extractHelper(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
 	}
 	return ad.Err()
+}
+
+func marshalHelper(logger *log.Logger, v *Helper) ([]byte, error) {
+	ae := netlink.NewAttributeEncoder()
+
+	if v.Name != nil {
+		ae.String(ctaHelpName, *v.Name)
+	}
+	if v.Info != nil {
+		ae.String(ctaHelpInfo, *v.Info)
+	}
+
+	return ae.Encode()
 }
 
 func extractProtoTuple(logger *log.Logger, data []byte) (ProtoTuple, error) {
@@ -585,11 +601,11 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 			}
 			c.ProtoInfo = protoInfo
 		case ctaHelp:
-			help := &Help{}
-			if err := extractHelp(help, logger, ad.Bytes()); err != nil {
+			help := &Helper{}
+			if err := extractHelper(help, logger, ad.Bytes()); err != nil {
 				return err
 			}
-			c.Help = help
+			c.Helper = help
 		case ctaID:
 			ad.ByteOrder = binary.BigEndian
 			tmp := ad.Uint32()
