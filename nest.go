@@ -59,6 +59,13 @@ func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 		}
 		ae.Bytes(ctaProtoinfo|nlafNested, data)
 	}
+	if filters.Helper != nil {
+		data, err := marshalHelper(logger, filters.Helper)
+		if err != nil {
+			return []byte{}, err
+		}
+		ae.Bytes(ctaHelp|nlafNested, data)
+	}
 	if filters.Exp != nil {
 		if err := nestExpectedAttributes(logger, ae, filters.Exp); err != nil {
 			return []byte{}, err
@@ -70,6 +77,13 @@ func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 
 func nestExpectedAttributes(logger *log.Logger, ae *netlink.AttributeEncoder, filters *Exp) error {
 
+	if filters.Master != nil {
+		data, err := marshalIPTuple(logger, filters.Master)
+		if err != nil {
+			return err
+		}
+		ae.Bytes(ctaExpMaster|nlafNested, data)
+	}
 	if filters.Mask != nil {
 		data, err := marshalIPTuple(logger, filters.Mask)
 		if err != nil {
@@ -118,6 +132,13 @@ func nestExpectedAttributes(logger *log.Logger, ae *netlink.AttributeEncoder, fi
 		ae.ByteOrder = binary.BigEndian
 		ae.String(ctaExpFn, *filters.Fn)
 		ae.ByteOrder = nativeEndian
+	}
+	if filters.Nat != nil {
+		data, err := marshalNatInfo(logger, filters.Nat)
+		if err != nil {
+			return err
+		}
+		ae.Bytes(ctaExpNat|nlafNested, data)
 	}
 	return nil
 }
