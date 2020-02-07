@@ -54,6 +54,25 @@ func extractNatInfo(v *NatInfo, logger *log.Logger, data []byte) error {
 	return ad.Err()
 }
 
+func marshalNatInfo(logger *log.Logger, v *NatInfo) ([]byte, error) {
+	ae := netlink.NewAttributeEncoder()
+
+	if v.Dir != nil {
+		ae.ByteOrder = binary.BigEndian
+		ae.Uint32(ctaExpNatDir, *v.Dir)
+		ae.ByteOrder = nativeEndian
+	}
+	if v.Tuple != nil {
+		data, err := marshalIPTuple(logger, v.Tuple)
+		if err != nil {
+			return []byte{}, err
+		}
+		ae.Bytes(ctaExpNatTuple|nlafNested, data)
+	}
+
+	return ae.Encode()
+}
+
 func extractAttributeExpect(c *Con, logger *log.Logger, data []byte) error {
 	ad, err := netlink.NewAttributeDecoder(data)
 	if err != nil {
