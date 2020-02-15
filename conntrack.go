@@ -74,15 +74,16 @@ func (nfct *Nfct) Flush(t Table, f Family) error {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
 
 	if t == Conntrack {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtDelete)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtDelete)
 	} else if t == Expected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpDelete)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpDelete)
 	} else {
 		return ErrUnknownCtTable
 	}
@@ -95,15 +96,16 @@ func (nfct *Nfct) Dump(t Table, f Family) ([]Con, error) {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
 
 	if t == Conntrack {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtGet)
 	} else if t == Expected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpGet)
 	} else {
 		return nil, ErrUnknownCtTable
 	}
@@ -122,11 +124,20 @@ func (nfct *Nfct) Create(t Table, f Family, attributes Con) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Acknowledge | netlink.Create | netlink.Excl,
 		},
 		Data: data,
 	}
+
+	if t == Conntrack {
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtNew)
+	} else if t == Expected {
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpNew)
+	} else {
+		return ErrUnknownCtTable
+	}
+
 	return nfct.execute(req)
 }
 
@@ -141,16 +152,16 @@ func (nfct *Nfct) Query(t Table, f Family, filter FilterAttr) ([]Con, error) {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
 
 	if t == Conntrack {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGet)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtGet)
 	} else if t == Expected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGet)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpGet)
 	} else {
 		return nil, ErrUnknownCtTable
 	}
@@ -171,11 +182,20 @@ func (nfct *Nfct) Get(t Table, f Family, match Con) ([]Con, error) {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtGet),
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
+
+	if t == Conntrack {
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtGet)
+	} else if t == Expected {
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpGet)
+	} else {
+		return []Con{}, ErrUnknownCtTable
+	}
+
 	return nfct.query(req)
 }
 
@@ -194,20 +214,25 @@ func (nfct *Nfct) Update(t Table, f Family, attributes Con) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
-			Type:  netlink.HeaderType((t << 8) | ipctnlMsgCtNew),
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
+
+	if t == Conntrack {
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtNew)
+	} else if t == Expected {
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpNew)
+	} else {
+		return ErrUnknownCtTable
+	}
+
 	return nfct.execute(req)
 }
 
 // Delete elements from the conntrack subsystem with certain attributes
 func (nfct *Nfct) Delete(t Table, f Family, filters Con) error {
-	if t != Conntrack {
-		return ErrUnknownCtTable
-	}
-
 	query, err := nestAttributes(nfct.logger, &filters)
 	if err != nil {
 		return err
@@ -217,15 +242,16 @@ func (nfct *Nfct) Delete(t Table, f Family, filters Con) error {
 
 	req := netlink.Message{
 		Header: netlink.Header{
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Acknowledge,
 		},
 		Data: data,
 	}
 
 	if t == Conntrack {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtDelete)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtDelete)
 	} else if t == Expected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpDelete)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpDelete)
 	} else {
 		return ErrUnknownCtTable
 	}
@@ -238,14 +264,15 @@ func (nfct *Nfct) DumpCPUStats(t Table) ([]CPUStat, error) {
 	data := putExtraHeader(unix.AF_UNSPEC, unix.NFNETLINK_V0, 0)
 	req := netlink.Message{
 		Header: netlink.Header{
+			Type:  netlink.HeaderType(t << 8),
 			Flags: netlink.Request | netlink.Dump,
 		},
 		Data: data,
 	}
 	if t == Conntrack {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgCtGetStatsCPU)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgCtGetStatsCPU)
 	} else if t == Expected {
-		req.Header.Type = netlink.HeaderType((t << 8) | ipctnlMsgExpGetStatsCPU)
+		req.Header.Type |= netlink.HeaderType(ipctnlMsgExpGetStatsCPU)
 	} else {
 		return nil, ErrUnknownCtTable
 	}
