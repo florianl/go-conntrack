@@ -335,6 +335,11 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 			}
 			reply, err := nfct.Con.Receive()
 			if err != nil {
+				if opError, ok := err.(*netlink.OpError); ok {
+					if opError.Timeout() || opError.Temporary() {
+						continue
+					}
+				}
 				nfct.logger.Printf("receiving error: %v", err)
 				return
 			}
