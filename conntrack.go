@@ -285,7 +285,9 @@ func ParseAttributes(logger *log.Logger, data []byte) (Con, error) {
 	if len(data) < 2 {
 		return Con{}, ErrDataLength
 	}
-	return extractAttributes(logger, data)
+	c := Con{}
+	err := extractAttributes(logger, &c, data)
+	return c, err
 }
 
 // HookFunc is a function, that receives events from a Netlinkgroup.
@@ -344,10 +346,11 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 				return
 			}
 
+			c := Con{}
 			for _, msg := range reply {
-				c, err := parseConnectionMsg(nfct.logger, msg, (int(msg.Header.Type)&0x300)>>8, int(msg.Header.Type)&0xF)
-				if err != nil {
+				if err := parseConnectionMsg(nfct.logger, &c, msg, (int(msg.Header.Type)&0x300)>>8, int(msg.Header.Type)&0xF); err != nil {
 					nfct.logger.Printf("could not parse received message: %v", err)
+					continue
 				}
 				if ret := fn(c); ret != 0 {
 					return
@@ -481,13 +484,13 @@ func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
 
 	var conn []Con
 	for _, msg := range reply {
-		c, err := parseConnectionMsg(nfct.logger, msg, (int(req.Header.Type)&0x300)>>8, int(req.Header.Type)&0xF)
-		if err != nil {
+		c := Con{}
+		if err := parseConnectionMsg(nfct.logger, &c, msg, (int(req.Header.Type)&0x300)>>8, int(req.Header.Type)&0xF); err != nil {
 			return nil, err
 		}
 		// check if c is an empty struct
 		if (Con{}) == c {
-			break
+			continue
 		}
 		conn = append(conn, c)
 	}
@@ -547,19 +550,19 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 	return append([]byte{familiy, version}, buf...)
 }
 
-type extractFunc func(*log.Logger, []byte) (Con, error)
+type extractFunc func(*log.Logger, *Con, []byte) error
 
-func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqTable, reqType int) (Con, error) {
+func parseConnectionMsg(logger *log.Logger, c *Con, msg netlink.Message, reqTable, reqType int) error {
 
 	if msg.Header.Type == netlink.Error {
 		errMsg, err := unmarschalErrMsg(msg.Data)
 		if err != nil {
-			return Con{}, err
+			return err
 		}
 		if errMsg.Code == 0 {
-			return Con{}, nil
+			return nil
 		}
-		return Con{}, fmt.Errorf("%#v", errMsg)
+		return fmt.Errorf("%#v", errMsg)
 	}
 
 	var fnMap map[int]extractFunc
@@ -578,12 +581,12 @@ func parseConnectionMsg(logger *log.Logger, msg netlink.Message, reqTable, reqTy
 			ipctnlMsgExpDelete: extractExpectAttributes,
 		}
 	default:
-		return Con{}, fmt.Errorf("unknown conntrack table")
+		return fmt.Errorf("unknown conntrack table")
 	}
 
 	if fn, ok := fnMap[reqType]; ok {
-		return fn(logger, msg.Data)
+		return fn(logger, c, msg.Data)
 	}
 
-	return Con{}, fmt.Errorf("unknown message type: 0x%02x", reqType)
+	return fmt.Errorf("unknown message type: 0x%02x", reqType)
 }

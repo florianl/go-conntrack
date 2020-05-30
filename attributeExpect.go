@@ -145,13 +145,10 @@ func extractAttributeExpect(c *Con, logger *log.Logger, data []byte) error {
 	return ad.Err()
 }
 
-func extractExpectAttributes(logger *log.Logger, msg []byte) (Con, error) {
-	c := Con{}
-
+func extractExpectAttributes(logger *log.Logger, c *Con, msg []byte) error {
 	offset := checkHeader(msg[:2])
-	if err := extractAttributeExpect(&c, logger, msg[offset:]); err != nil {
-		return c, err
+	if err := extractAttributeExpect(c, logger, msg[offset:]); err != nil {
+		return err
 	}
-
-	return c, nil
+	return nil
 }

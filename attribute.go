@@ -691,12 +691,10 @@ func checkHeader(data []byte) int {
 	return 0
 }
 
-func extractAttributes(logger *log.Logger, msg []byte) (Con, error) {
-	c := Con{}
-
+func extractAttributes(logger *log.Logger, c *Con, msg []byte) error {
 	offset := checkHeader(msg[:2])
-	if err := extractAttribute(&c, logger, msg[offset:]); err != nil {
-		return c, err
+	if err := extractAttribute(c, logger, msg[offset:]); err != nil {
+		return err
 	}
-	return c, nil
+	return nil
 }
