@@ -35,6 +35,8 @@ type Nfct struct {
 
 	logger *log.Logger
 
+	errChan chan error
+
 	setReadTimeout  func() error
 	setWriteTimeout func() error
 }

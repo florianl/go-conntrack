@@ -64,8 +64,11 @@ func (devNull) Write(p []byte) (int, error) {
 	return 0, nil
 }
 
-// Close the connection to the conntrack subsystem
+// Close the connection to the conntrack subsystem.
 func (nfct *Nfct) Close() error {
+	if nfct.errChan != nil {
+		close(nfct.errChan)
+	}
 	return nfct.Con.Close()
 }
 
@@ -294,13 +297,28 @@ func ParseAttributes(logger *log.Logger, data []byte) (Con, error) {
 // Return something different than 0, to stop receiving messages.
 type HookFunc func(c Con) int
 
-// Register your function to receive events from a Netlinkgroup.
+// AttachErrChan creates and attaches an error channel to the Nfct object.
+// If an unexpected error is received this error will be reported via this
+// channel.
+// A call of (*Nfct).Close() will also close this channel.
+func (nfct *Nfct) AttachErrChan() <-chan error {
+	if nfct.errChan != nil {
+		return nfct.errChan
+	}
+	errChan := make(chan error)
+	nfct.errChan = errChan
+	return errChan
+}
+
+// Register your function to receive events from a Netlinkgroup. If an unexpected error
+// is received it will stop from processing further events.
 // If your function returns something different than 0, it will stop.
 func (nfct *Nfct) Register(ctx context.Context, t Table, group NetlinkGroup, fn HookFunc) error {
 	return nfct.register(ctx, t, group, []ConnAttr{}, fn)
 }
 
 // RegisterFiltered registers your function to receive events from a Netlinkgroup and applies a filter.
+// If an unexpected error is received it will stop from processing further events.
 // If your function returns something different than 0, it will stop.
 // ConnAttr of the same ConnAttrType will be linked by an OR operation.
 // Otherwise, ConnAttr of different ConnAttrType will be connected by an AND operation for the filter.
@@ -315,6 +333,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 	if err := nfct.attachFilter(t, filter); err != nil {
 		return err
 	}
+
 	go func() {
 		defer func() {
 			if err := nfct.removeFilter(); err != nil {
@@ -343,6 +362,9 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 					}
 				}
 				nfct.logger.Printf("receiving error: %v", err)
+				if nfct.errChan != nil {
+					nfct.errChan <- err
+				}
 				return
 			}
 
