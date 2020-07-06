@@ -15,7 +15,7 @@ import (
 func Open(config *Config) (*Nfct, error) {
 	var nfct Nfct
 
-	con, err := netlink.Dial(unix.NETLINK_NETFILTER, &netlink.Config{NetNS: config.NetNS})
+	con, err := netlink.Dial(unix.NETLINK_NETFILTER, &netlink.Config{NetNS: config.NetNS, DisableNSLockThread: config.DisableNSLockThread})
 	if err != nil {
 		return nil, err
 	}

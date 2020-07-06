@@ -14,8 +14,19 @@ import (
 
 // Config contains options for a Conn.
 type Config struct {
-	// Network namespace the Nflog needs to operate in. If set to 0 (default),
-	// no network namespace will be entered.
+	// NetNS specifies the network namespace the Conn will operate in.
+	//
+	// If set (non-zero), Conn will enter the specified network namespace and
+	// an error will occur in Dial if the operation fails.
+	//
+	// If not set (zero), a best-effort attempt will be made to enter the
+	// network namespace of the calling thread: this means that any changes made
+	// to the calling thread's network namespace will also be reflected in Conn.
+	// If this operation fails (due to lack of permissions or because network
+	// namespaces are disabled by kernel configuration), Dial will not return
+	// an error, and the Conn will operate in the default network namespace of
+	// the process. This enables non-privileged use of Conn in applications
+	// which do not require elevated privileges.
 	NetNS int
 
 	// Time till a read action times out - only available for Go >= 1.12
@@ -26,6 +37,24 @@ type Config struct {
 
 	// Interface to log internals.
 	Logger *log.Logger
+
+	// DisableNSLockThread disables package netlink's default goroutine thread
+	// locking behavior.
+	//
+	// By default, the library will lock the processing goroutine to its
+	// corresponding OS thread in order to enable communication over netlink to
+	// a different network namespace.
+	//
+	// If the caller already knows that the netlink socket is in the same
+	// namespace as the calling thread, this can introduce a performance
+	// impact. This option disables the OS thread locking behavior if
+	// performance considerations are of interest.
+	//
+	// If disabled, it is the responsibility of the caller to make sure that all
+	// threads are running in the correct namespace.
+	//
+	// When DisableNSLockThread is set, the caller cannot set the NetNS value.
+	DisableNSLockThread bool
 }
 
 // Nfct represents a conntrack handler
