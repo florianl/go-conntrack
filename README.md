@@ -3,8 +3,7 @@ go-conntrack [![PkgGoDev](https://pkg.go.dev/badge/github.com/florianl/go-conntr
 
 This is `go-conntrack` and it is written in [golang](https://golang.org/). It provides a [C](https://en.wikipedia.org/wiki/C_(programming_language))-binding free API to the conntrack subsystem of the [Linux kernel](https://www.kernel.org).
 
-Example
--------
+## Example
 
 ```golang
 func main() {
@@ -28,3 +27,7 @@ func main() {
 	}
 }
 ```
+
+## Requirements
+
+* A version of Go that is [supported by upstream](https://golang.org/doc/devel/release.html#policy)
