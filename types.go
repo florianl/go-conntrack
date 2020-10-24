@@ -91,13 +91,19 @@ type Timestamp struct {
 	Stop  *time.Time
 }
 
+// TCPFlags contains additional information for TCP flags
+type TCPFlags struct {
+	Flags *uint8
+	Mask  *uint8
+}
+
 // TCPInfo contains additional information for TCP sessions
 type TCPInfo struct {
 	State      *uint8
 	WScaleOrig *uint8
 	WScaleRepl *uint8
-	FlagsOrig  *[]byte
-	FlagsReply *[]byte
+	FlagsOrig  *TCPFlags
+	FlagsReply *TCPFlags
 }
 
 // DCCPInfo contains additional information for DCCP sessions
