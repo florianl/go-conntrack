@@ -276,11 +276,25 @@ func extractTCPInfo(v *TCPInfo, logger *log.Logger, data []byte) error {
 			tmp := ad.Uint8()
 			v.WScaleRepl = &tmp
 		case ctaProtoinfoTCPFlagsOrig:
+			flags := &TCPFlags{}
 			tmp := ad.Bytes()
-			v.FlagsOrig = &tmp
+			if len(tmp) > 0 {
+				flags.Flags = &tmp[0]
+			}
+			if len(tmp) > 1 {
+				flags.Mask = &tmp[1]
+			}
+			v.FlagsOrig = flags
 		case ctaProtoinfoTCPFlagsRepl:
+			flags := &TCPFlags{}
 			tmp := ad.Bytes()
-			v.FlagsReply = &tmp
+			if len(tmp) > 0 {
+				flags.Flags = &tmp[0]
+			}
+			if len(tmp) > 1 {
+				flags.Mask = &tmp[1]
+			}
+			v.FlagsReply = flags
 		default:
 			logger.Printf("extractTCPInfo(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}
@@ -307,10 +321,24 @@ func marshalTCPInfo(logger *log.Logger, v *TCPInfo) ([]byte, error) {
 		ae.ByteOrder = nativeEndian
 	}
 	if v.FlagsOrig != nil {
-		ae.Bytes(ctaProtoinfoTCPFlagsOrig, *v.FlagsOrig)
+		tmp := []byte{0x00, 0xff}
+		if v.FlagsOrig.Flags != nil {
+			tmp[0] = *v.FlagsOrig.Flags
+		}
+		if v.FlagsOrig.Mask != nil {
+			tmp[1] = *v.FlagsOrig.Mask
+		}
+		ae.Bytes(ctaProtoinfoTCPFlagsOrig, tmp)
 	}
 	if v.FlagsReply != nil {
-		ae.Bytes(ctaProtoinfoTCPFlagsRepl, *v.FlagsReply)
+		tmp := []byte{0x00, 0xff}
+		if v.FlagsReply.Flags != nil {
+			tmp[0] = *v.FlagsReply.Flags
+		}
+		if v.FlagsReply.Mask != nil {
+			tmp[1] = *v.FlagsReply.Mask
+		}
+		ae.Bytes(ctaProtoinfoTCPFlagsRepl, tmp)
 	}
 
 	return ae.Encode()
