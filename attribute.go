@@ -544,8 +544,10 @@ func extractIPTuple(v *IPTuple, logger *log.Logger, data []byte) error {
 			}
 			v.Proto = &proto
 		case ctaTupleZone:
-			tmp := ad.Bytes()
-			v.Zone = &tmp
+			ad.ByteOrder = binary.BigEndian
+			zone := ad.Uint16()
+			v.Zone = &zone
+			ad.ByteOrder = nativeEndian
 		default:
 			logger.Printf("extractIPTuple(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
 		}

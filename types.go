@@ -160,7 +160,7 @@ type IPTuple struct {
 	Src   *net.IP
 	Dst   *net.IP
 	Proto *ProtoTuple
-	Zone  *[]byte
+	Zone  *uint16
 }
 
 // NatInfo contains addition NAT information of a connection
