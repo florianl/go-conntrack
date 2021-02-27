@@ -1,9 +1,9 @@
 module github.com/florianl/go-conntrack
 
 require (
-	github.com/mdlayher/netlink v1.3.2
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
-	golang.org/x/sys v0.0.0-20210216163648-f7da38b97c65
+	github.com/mdlayher/netlink v1.4.0
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	golang.org/x/sys v0.0.0-20210227040730-b0d1d43c014d
 )
 
 go 1.13
