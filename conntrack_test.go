@@ -160,7 +160,6 @@ func TestCreate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			nfct := &Nfct{}
-			AdjustReadTimeout(nfct, func() error { return nil })
 			AdjustWriteTimeout(nfct, func() error { return nil })
 			nfct.Con = nltest.Dial(func(reqs []netlink.Message) ([]netlink.Message, error) {
 				if len(reqs) == 0 {

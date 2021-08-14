@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"time"
 	"unsafe"
 
 	"github.com/florianl/go-conntrack/internal/unix"
@@ -335,6 +336,13 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 	}
 
 	go func() {
+		go func() {
+			// block until context is done
+			<-ctx.Done()
+			// Set the read deadline to a point in the past to interrupt
+			// possible blocking Receive() calls.
+			nfct.Con.SetReadDeadline(time.Now().Add(-1 * time.Second))
+		}()
 		defer func() {
 			if err := nfct.removeFilter(); err != nil {
 				nfct.logger.Printf("could not remove filter: %v", err)
@@ -351,9 +359,6 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 				return
 			default:
 			}
-			if err := nfct.setReadTimeout(); err != nil {
-				nfct.logger.Printf("could not set read timeout: %v", err)
-			}
 			reply, err := nfct.Con.Receive()
 			if err != nil {
 				if opError, ok := err.(*netlink.OpError); ok {
@@ -361,9 +366,10 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 						continue
 					}
 				}
-				nfct.logger.Printf("receiving error: %v", err)
 				if nfct.errChan != nil {
 					nfct.errChan <- err
+				} else {
+					nfct.logger.Printf("receiving error: %v", err)
 				}
 				return
 			}
@@ -487,9 +493,6 @@ func (nfct *Nfct) send(req netlink.Message) error {
 		return err
 	}
 
-	if err := nfct.setReadTimeout(); err != nil {
-		nfct.logger.Printf("could not set read timeout: %v", err)
-	}
 	return nil
 }
 

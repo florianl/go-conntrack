@@ -25,7 +25,6 @@ func Open(config *Config) (*Nfct, error) {
 	} else {
 		nfct.logger = config.Logger
 	}
-	nfct.setReadTimeout = func() error { return nil }
 	nfct.setWriteTimeout = func() error { return nil }
 
 	return &nfct, nil

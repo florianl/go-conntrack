@@ -26,14 +26,6 @@ func Open(config *Config) (*Nfct, error) {
 	} else {
 		nfct.logger = config.Logger
 	}
-	if config.ReadTimeout > 0 {
-		nfct.setReadTimeout = func() error {
-			deadline := time.Now().Add(config.ReadTimeout)
-			return nfct.Con.SetReadDeadline(deadline)
-		}
-	} else {
-		nfct.setReadTimeout = func() error { return nil }
-	}
 
 	if config.WriteTimeout > 0 {
 		nfct.setWriteTimeout = func() error {

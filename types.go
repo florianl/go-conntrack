@@ -30,6 +30,10 @@ type Config struct {
 	NetNS int
 
 	// Time till a read action times out - only available for Go >= 1.12
+	//
+	// Deprecated: Cancel the context passed to RegisterFiltered() or Register()
+	// to remove the conntrack gracefully. Setting this value does no longer
+	// have an effect on conntrack.
 	ReadTimeout time.Duration
 
 	// Time till a write action times out - only available for Go >= 1.12
@@ -66,13 +70,7 @@ type Nfct struct {
 
 	errChan chan error
 
-	setReadTimeout  func() error
 	setWriteTimeout func() error
-}
-
-// adjust the ReadTimeout (mostly for testing)
-func adjustReadTimeout(nfct *Nfct, fn func() error) {
-	nfct.setReadTimeout = fn
 }
 
 // adjust the WriteTimeout (mostly for testing)
