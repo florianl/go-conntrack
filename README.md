@@ -1,4 +1,4 @@
-go-conntrack [![PkgGoDev](https://pkg.go.dev/badge/github.com/florianl/go-conntrack)](https://pkg.go.dev/github.com/florianl/go-conntrack) [![Build Status](https://travis-ci.org/florianl/go-conntrack.svg?branch=master)](https://travis-ci.org/florianl/go-conntrack) [![Go Report Card](https://goreportcard.com/badge/github.com/florianl/go-conntrack)](https://goreportcard.com/report/github.com/florianl/go-conntrack)
+go-conntrack [![PkgGoDev](https://pkg.go.dev/badge/github.com/florianl/go-conntrack)](https://pkg.go.dev/github.com/florianl/go-conntrack) [![Go Report Card](https://goreportcard.com/badge/github.com/florianl/go-conntrack)](https://goreportcard.com/report/github.com/florianl/go-conntrack) [![Go](https://github.com/florianl/go-conntrack/actions/workflows/go.yml/badge.svg)](https://github.com/florianl/go-conntrack/actions/workflows/go.yml)
 ============
 
 This is `go-conntrack` and it is written in [golang](https://golang.org/). It provides a [C](https://en.wikipedia.org/wiki/C_(programming_language))-binding free API to the conntrack subsystem of the [Linux kernel](https://www.kernel.org).
