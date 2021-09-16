@@ -25,6 +25,7 @@ jobs:
     - name: Test with -race
       run: go test -race -count=1 ./...
     - name: Integration test 
+      if: matrix.platform == 'ubuntu-latest'
       run: go test -exec=sudo -tags integration ./...
     - name: gofmt check
       if: matrix.platform == 'ubuntu-latest' && startsWith(matrix.go-version, '1.17')
