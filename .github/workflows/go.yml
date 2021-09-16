@@ -27,8 +27,8 @@ jobs:
     - name: Integration test 
       run: go test -exec=sudo -tags integration ./...
     - name: gofmt check
+      if: matrix.platform == 'ubuntu-latest' && startsWith(matrix.go-version, '1.17')
       run: diff <(echo -n) <(gofmt -d .)
-      if: matrix.platform == 'ubuntu-latest'
     - name: staticcheck.io
       if: matrix.platform == 'ubuntu-latest'
       # https://github.com/actions/setup-go/issues/14
