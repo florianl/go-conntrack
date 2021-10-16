@@ -188,6 +188,13 @@ type Exp struct {
 	Nat        *NatInfo
 }
 
+// Nat contains information for source/destination NAT
+type Nat struct {
+	IPMin *net.IP
+	IPMax *net.IP
+	Proto *ProtoTuple
+}
+
 // Con contains all the information of a connection
 type Con struct {
 	Origin        *IPTuple
@@ -196,6 +203,7 @@ type Con struct {
 	CounterOrigin *Counter
 	CounterReply  *Counter
 	Helper        *Helper
+	NatSrc        *Nat
 	SeqAdjOrig    *SeqAdj
 	SeqAdjRepl    *SeqAdj
 	ID            *uint32

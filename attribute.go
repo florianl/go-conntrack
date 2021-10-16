@@ -116,6 +116,14 @@ const (
 	ctaSeqAdjOffsetAfter  = 3
 )
 
+const (
+	ctaNatV4MinIP = 1
+	ctaNatV4MaxIP = 2
+	ctaNatProto   = 3
+	ctaNatV6MinIP = 4
+	ctaNatV6MaxIP = 5
+)
+
 const nlafNested = (1 << 15)
 
 func extractSecCtx(v *SecCtx, logger *log.Logger, data []byte) error {
@@ -256,6 +264,55 @@ func extractSeqAdj(v *SeqAdj, logger *log.Logger, data []byte) error {
 		}
 	}
 	return ad.Err()
+}
+
+func extractNat(v *Nat, logger *log.Logger, data []byte) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	ad.ByteOrder = binary.BigEndian
+	for ad.Next() {
+		switch ad.Type() {
+		case ctaNatV4MinIP:
+			tmp := net.IP(ad.Bytes())
+			v.IPMin = &tmp
+		case ctaNatV4MaxIP:
+			tmp := net.IP(ad.Bytes())
+			v.IPMax = &tmp
+		case ctaNatV6MinIP:
+			tmp := net.IP(ad.Bytes())
+			v.IPMin = &tmp
+		case ctaNatV6MaxIP:
+			tmp := net.IP(ad.Bytes())
+			v.IPMax = &tmp
+		default:
+			logger.Printf("extractNat(): %d | %d\t %v", ad.Type(), ad.Type()&0xFF, ad.Bytes())
+		}
+	}
+	return ad.Err()
+}
+
+func marshalNat(logger *log.Logger, v *Nat) ([]byte, error) {
+	ae := netlink.NewAttributeEncoder()
+
+	if v.IPMin != nil {
+		if v.IPMin.To4() == nil && v.IPMin.To16() != nil {
+			ae.Bytes(ctaNatV6MinIP, *v.IPMin)
+		} else {
+			tmp := (*v.IPMin).To4()
+			ae.Bytes(ctaNatV4MinIP, tmp)
+		}
+	}
+	if v.IPMax != nil {
+		if v.IPMax.To4() == nil && v.IPMax.To16() != nil {
+			ae.Bytes(ctaNatV6MaxIP, *v.IPMax)
+		} else {
+			tmp := (*v.IPMax).To4()
+			ae.Bytes(ctaNatV4MaxIP, tmp)
+		}
+	}
+	return ae.Encode()
 }
 
 func extractTCPInfo(v *TCPInfo, logger *log.Logger, data []byte) error {
@@ -707,6 +764,12 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 				return err
 			}
 			c.Timestamp = ts
+		case ctaNatSrc:
+			nat := &Nat{}
+			if err := extractNat(nat, logger, ad.Bytes()); err != nil {
+				return err
+			}
+			c.NatSrc = nat
 		default:
 			logger.Printf("extractAttribute() - Unknown attribute: %d %d %v\n", ad.Type()&0xFF, ad.Type(), ad.Bytes())
 		}
