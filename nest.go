@@ -66,6 +66,15 @@ func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 		}
 		ae.Bytes(ctaHelp|nlafNested, data)
 	}
+
+	if filters.NatSrc != nil {
+		data, err := marshalNat(logger, filters.NatSrc)
+		if err != nil {
+			return []byte{}, err
+		}
+		ae.Bytes(ctaNatSrc|nlafNested, data)
+	}
+
 	if filters.Exp != nil {
 		if err := nestExpectedAttributes(logger, ae, filters.Exp); err != nil {
 			return []byte{}, err
