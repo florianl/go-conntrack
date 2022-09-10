@@ -29,6 +29,5 @@ This package processes information directly from the kernel and therefore it req
 can provide this privileges by adjusting the CAP_NET_ADMIN capabilities.
 
 	setcap 'cap_net_admin=+ep' /your/executable
-
 */
 package conntrack
