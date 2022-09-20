@@ -295,8 +295,9 @@ func ParseAttributes(logger *log.Logger, data []byte) (Con, error) {
 }
 
 // HookFunc is a function, that receives events from a Netlinkgroup.
+// The event group of the event is also passed to the hook function, to allow distinguishing between new, update, delete, etc.
 // Return something different than 0, to stop receiving messages.
-type HookFunc func(c Con) int
+type HookFunc func(c Con, table Table, eventgroup NetlinkGroup) int
 
 // AttachErrChan creates and attaches an error channel to the Nfct object.
 // If an unexpected error is received this error will be reported via this
@@ -327,7 +328,7 @@ func (nfct *Nfct) RegisterFiltered(ctx context.Context, t Table, group NetlinkGr
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
-func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, filter []ConnAttr, fn func(c Con) int) error {
+func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, filter []ConnAttr, fn HookFunc) error {
 	if err := nfct.manageGroups(t, uint32(groups), true); err != nil {
 		return err
 	}
@@ -380,7 +381,44 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 					nfct.logger.Printf("could not parse received message: %v", err)
 					continue
 				}
-				if ret := fn(c); ret != 0 {
+				// Attempt to detect the table of the received event
+				var nlTable Table
+				msgTypeTable := (msg.Header.Type&0x300)>>8
+				switch msgTypeTable {
+				case unix.NFNL_SUBSYS_CTNETLINK:
+					nlTable = Conntrack
+				case unix.NFNL_SUBSYS_CTNETLINK_EXP:
+					nlTable = Expected
+				default:
+					nfct.logger.Printf("Unable to detect the table of the received message. Unknown table: %v", msgTypeTable)
+				}
+				// Attempt to detect the group of the received event
+				var nlGroup NetlinkGroup
+				msgTypeGroup := (msg.Header.Type&0xF)
+				switch nlTable {
+				case unix.NFNL_SUBSYS_CTNETLINK:
+					if msgTypeGroup == ipctnlMsgCtNew {
+						if msg.Header.Flags & (netlink.Create | netlink.Excl) == (netlink.Create | netlink.Excl) {
+							nlGroup = NetlinkCtNew
+						} else {
+							nlGroup = NetlinkCtUpdate
+						}
+					} else if msgTypeGroup == ipctnlMsgCtDelete {
+						nlGroup = NetlinkCtDestroy
+					}
+				case unix.NFNL_SUBSYS_CTNETLINK_EXP:
+					if msgTypeGroup == ipctnlMsgExpNew {
+						if msg.Header.Flags & (netlink.Create | netlink.Excl) == (netlink.Create | netlink.Excl) {
+							nlGroup = NetlinkCtExpectedNew
+						} else {
+							nlGroup = NetlinkCtExpectedUpdate
+						}
+					} else if msgTypeGroup == ipctnlMsgExpDelete {
+						nlGroup = NetlinkCtExpectedDestroy
+					}
+				}
+				// Call the callback function
+				if ret := fn(c, nlTable, nlGroup); ret != 0 {
 					return
 				}
 			}
