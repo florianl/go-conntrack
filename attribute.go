@@ -36,6 +36,9 @@ const (
 	ctaMarkMask
 	ctaLables
 	ctaLablesMask
+	ctaSynProxy
+	ctaFilter
+	ctaStatusMask
 )
 
 const (
@@ -770,6 +773,11 @@ func extractAttribute(c *Con, logger *log.Logger, data []byte) error {
 				return err
 			}
 			c.NatSrc = nat
+		case ctaStatusMask:
+			ad.ByteOrder = binary.BigEndian
+			tmp := ad.Uint32()
+			c.StatusMask = &tmp
+			ad.ByteOrder = nativeEndian
 		default:
 			logger.Printf("extractAttribute() - Unknown attribute: %d %d %v\n", ad.Type()&0xFF, ad.Type(), ad.Bytes())
 		}
