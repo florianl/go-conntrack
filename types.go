@@ -208,6 +208,7 @@ type Con struct {
 	SeqAdjRepl    *SeqAdj
 	ID            *uint32
 	Status        *uint32
+	StatusMask    *uint32
 	Use           *uint32
 	Mark          *uint32
 	MarkMask      *uint32
