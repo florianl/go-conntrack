@@ -382,16 +382,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 					continue
 				}
 				// Attempt to detect the table of the received event
-				var nlTable Table
-				msgTypeTable := (msg.Header.Type&0x300)>>8
-				switch msgTypeTable {
-				case unix.NFNL_SUBSYS_CTNETLINK:
-					nlTable = Conntrack
-				case unix.NFNL_SUBSYS_CTNETLINK_EXP:
-					nlTable = Expected
-				default:
-					nfct.logger.Printf("Unable to detect the table of the received message. Unknown table: %v", msgTypeTable)
-				}
+				msgTypeTable := Table((msg.Header.Type&0x300)>>8)
 				// Attempt to detect the group of the received event
 				var nlGroup NetlinkGroup
 				msgTypeGroup := (msg.Header.Type&0xF)
