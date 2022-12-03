@@ -28,5 +28,7 @@ func Open(config *Config) (*Nfct, error) {
 	}
 	nfct.setWriteTimeout = func() error { return nil }
 
+	nfct.addConntrackInformation = config.AddConntrackInformation
+
 	return &nfct, nil
 }

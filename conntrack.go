@@ -335,6 +335,17 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 		return err
 	}
 
+	enricher := func(*Con, netlink.Header) {}
+	if nfct.addConntrackInformation {
+		enricher = func(c *Con, h netlink.Header) {
+			info := InfoSource{
+				Table:        Table((h.Type & 0x300) >> 8),
+				NetlinkGroup: NetlinkGroup(h.Type & 0xF),
+			}
+			c.Info = &info
+		}
+	}
+
 	go func() {
 		go func() {
 			// block until context is done
@@ -380,6 +391,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 					nfct.logger.Printf("could not parse received message: %v", err)
 					continue
 				}
+				enricher(&c, msg.Header)
 				if ret := fn(c); ret != 0 {
 					return
 				}

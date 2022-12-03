@@ -59,6 +59,10 @@ type Config struct {
 	//
 	// When DisableNSLockThread is set, the caller cannot set the NetNS value.
 	DisableNSLockThread bool
+
+	// AddConntrackInformation enriches Con and provides additional information of
+	// the Netlink/Conntrack origin.
+	AddConntrackInformation bool
 }
 
 // Nfct represents a conntrack handler
@@ -71,6 +75,8 @@ type Nfct struct {
 	errChan chan error
 
 	setWriteTimeout func() error
+
+	addConntrackInformation bool
 }
 
 // adjust the WriteTimeout (mostly for testing)
@@ -197,6 +203,8 @@ type Nat struct {
 
 // Con contains all the information of a connection
 type Con struct {
+	Info *InfoSource
+
 	Origin        *IPTuple
 	Reply         *IPTuple
 	ProtoInfo     *ProtoInfo
@@ -217,6 +225,15 @@ type Con struct {
 	Timestamp     *Timestamp
 	SecCtx        *SecCtx
 	Exp           *Exp
+}
+
+// InfoSource provides further information from Netlink about a connection.
+type InfoSource struct {
+	// Conntrack table this information originates from.
+	Table Table
+
+	// NetlinkGroup this information originates from.
+	NetlinkGroup NetlinkGroup
 }
 
 // CPUStat contains various conntrack related per CPU statistics
