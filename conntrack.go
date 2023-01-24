@@ -368,9 +368,21 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 	enricher := func(*Con, netlink.Header) {}
 	if nfct.addConntrackInformation {
 		enricher = func(c *Con, h netlink.Header) {
+			var group NetlinkGroup
+
+			if h.Type&0xFF == ipctnlMsgCtNew {
+				if h.Flags&(netlink.Create|netlink.Excl) != 0 {
+					group = NetlinkCtNew
+				} else {
+					group = NetlinkCtUpdate
+				}
+			} else {
+				group = NetlinkCtDestroy
+			}
+
 			info := InfoSource{
 				Table:        Table((h.Type & 0x300) >> 8),
-				NetlinkGroup: NetlinkGroup(h.Type & 0xF),
+				NetlinkGroup: group,
 			}
 			c.Info = &info
 		}
