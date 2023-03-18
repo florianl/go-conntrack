@@ -21,6 +21,9 @@ const (
 
 	// Expected is a table containing information about related connections to existing ones
 	Expected Table = unix.NFNL_SUBSYS_CTNETLINK_EXP
+
+	// Timeout is a table containing timeout information of connection flows.
+	Timeout Table = unix.NFNL_SUBSYS_CTNETLINK_TIMEOUT
 )
 
 const (
