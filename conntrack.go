@@ -398,8 +398,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 			// Set the read deadline to a point in the past to interrupt
 			// possible blocking Receive() calls.
 			nfct.Con.SetReadDeadline(time.Now().Add(-1 * time.Second))
-		}()
-		defer func() {
+
 			if err := nfct.removeFilter(); err != nil {
 				nfct.logger.Printf("could not remove filter: %v", err)
 			}
