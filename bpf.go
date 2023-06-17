@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/florianl/go-conntrack/internal/unix"
 	"golang.org/x/net/bpf"
 )
 
@@ -19,31 +20,6 @@ var (
 
 // various consts from include/uapi/linux/bpf_common.h
 const (
-	// Instruction classes
-	bpfLD   = 0x00 /* copy a value into the accumulator */
-	bpfLDX  = 0x01 /* load a value into the	index register */
-	bpfALU  = 0x04 /* perform operation between the accumulator and index register or constant, and store the result back in the accumulator */
-	bpfJMP  = 0x05 /* jump	instruction */
-	bpfRET  = 0x06 /* return instructions terminate the filter program */
-	bpfMISC = 0x07 /* register transfer	instruction */
-	// ld/ldx fields
-	bpfW   = 0x00 /* 32-bit word size */
-	bpfH   = 0x08 /* 16-bit word size */
-	bpfB   = 0x10 /*  8-bit word size */
-	bpfIMM = 0x00 /* constant addressing */
-	bpfABS = 0x20 /* fixed offset */
-	bpfIND = 0x40 /* variable offset */
-	// alu/jmp fields
-	bpfADD = 0x00
-	bpfAND = 0x50
-	bpfJA  = 0x00
-	bpfJEQ = 0x10
-	bpfK   = 0x00
-
-	// include/uapi/linux/filter.h
-	bpfTAX = 0x00
-	bpfTXA = 0x80
-
 	bpfMAXINSTR = 4096
 
 	bpfVerdictAccept = 0xffffffff
@@ -150,26 +126,26 @@ func compareValue(masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filt
 
 	if masking {
 		for i := 0; i < (int(dataLen) / 4); i++ {
-			tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4 * (i + 1))}
+			tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IND | bpfOp, K: uint32(4 * (i + 1))}
 			raw = append(raw, tmp)
 			mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
-			tmp = bpf.RawInstruction{Op: bpfALU | bpfAND | bpfK, K: mask}
+			tmp = bpf.RawInstruction{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, K: mask}
 			raw = append(raw, tmp)
 			val := encodeValue(filter.Data[i*4 : (i+1)*4])
 			val &= mask
 			if i == (int(dataLen)/4 - 1) {
-				tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: 255}
+				tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jt: 255}
 			} else {
-				tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jf: 255}
+				tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jf: 255}
 			}
 			raw = append(raw, tmp)
 		}
 	} else {
-		tmp := bpf.RawInstruction{Op: bpfLD | bpfIND | bpfOp, K: uint32(4)}
+		tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IND | bpfOp, K: uint32(4)}
 		raw = append(raw, tmp)
 		jumps := (filterLen - i)
 		val := encodeValue(filter.Data)
-		tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: val, Jt: uint8(jumps)}
+		tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jt: uint8(jumps)}
 		raw = append(raw, tmp)
 
 	}
@@ -185,13 +161,13 @@ func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 
 	switch dataLen {
 	case 1:
-		bpfOp = bpfB
+		bpfOp = unix.BPF_B
 	case 2:
-		bpfOp = bpfH
+		bpfOp = unix.BPF_H
 	case 4:
-		bpfOp = bpfW
+		bpfOp = unix.BPF_W
 	case 16:
-		bpfOp = bpfW
+		bpfOp = unix.BPF_W
 	}
 
 	sort.Slice(filters, func(i, j int) bool {
@@ -212,36 +188,36 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	failed := uint8(255)
 
 	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 20
-	tmp := bpf.RawInstruction{Op: bpfLD | bpfIMM, K: 0x14}
+	tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IMM, K: 0x14}
 	raw = append(raw, tmp)
 
 	if nested != 0 {
 		for _, nest := range filterCheck[filters[0].Type].nest {
 			// find nest attribute
-			tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: nest}
+			tmp = bpf.RawInstruction{Op: unix.BPF_LDX | unix.BPF_IMM, K: nest}
 			raw = append(raw, tmp)
-			tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
+			tmp = bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, K: 0xfffff00c}
 			raw = append(raw, tmp)
 
 			// jump, if nest not found
-			tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: failed}
+			tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: failed}
 			raw = append(raw, tmp)
 
-			tmp = bpf.RawInstruction{Op: bpfALU | bpfADD | bpfK, K: 4}
+			tmp = bpf.RawInstruction{Op: unix.BPF_ALU | unix.BPF_ADD | unix.BPF_K, K: 4}
 			raw = append(raw, tmp)
 		}
 	}
 
 	// find final attribute
-	tmp = bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: uint32(filterCheck[filters[0].Type].ct)}
+	tmp = bpf.RawInstruction{Op: unix.BPF_LDX | unix.BPF_IMM, K: uint32(filterCheck[filters[0].Type].ct)}
 	raw = append(raw, tmp)
-	tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfABS, K: 0xfffff00c}
-	raw = append(raw, tmp)
-
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, K: 0, Jt: failed}
+	tmp = bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, K: 0xfffff00c}
 	raw = append(raw, tmp)
 
-	tmp = bpf.RawInstruction{Op: bpfMISC | bpfTAX}
+	tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: failed}
+	raw = append(raw, tmp)
+
+	tmp = bpf.RawInstruction{Op: unix.BPF_MISC | unix.BPF_TAX}
 	raw = append(raw, tmp)
 
 	// compare expected and actual value
@@ -250,22 +226,22 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 
 	// negate filter
 	if filters[0].Negate {
-		raw = append(raw, bpf.RawInstruction{Op: bpfJMP | bpfJA, K: 1})
+		raw = append(raw, bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JA, K: 1})
 	}
 
 	// Failed jumps are set to 255. Now we correct them to the actual failed jump instruction
 	j := uint8(1)
 	for i := len(raw) - 1; i > 0; i-- {
-		if (raw[i].Jt == 255) && (raw[i].Op == bpfJMP|bpfJEQ|bpfK) {
+		if (raw[i].Jt == 255) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
 			raw[i].Jt = j
-		} else if (raw[i].Jf == 255) && (raw[i].Op == bpfJMP|bpfJEQ|bpfK) {
+		} else if (raw[i].Jf == 255) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
 			raw[i].Jf = j - 1
 		}
 		j++
 	}
 
 	// reject
-	raw = append(raw, bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictReject})
+	raw = append(raw, bpf.RawInstruction{Op: unix.BPF_RET | unix.BPF_K, K: bpfVerdictReject})
 
 	return raw
 }
@@ -275,19 +251,19 @@ func filterSubsys(subsys uint32) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 
 	// Offset between start nlmshdr to nlmsg_type in byte
-	tmp := bpf.RawInstruction{Op: bpfLDX | bpfIMM, K: 4}
+	tmp := bpf.RawInstruction{Op: unix.BPF_LDX | unix.BPF_IMM, K: 4}
 	raw = append(raw, tmp)
 
 	// Size of the subsytem id in byte
-	tmp = bpf.RawInstruction{Op: bpfLD | bpfB | bpfIND, K: 1}
+	tmp = bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_IND, K: 1}
 	raw = append(raw, tmp)
 
 	// A == subsys ? jump + 1 : accept
-	tmp = bpf.RawInstruction{Op: bpfJMP | bpfJEQ | bpfK, Jt: 1, K: subsys}
+	tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 1, K: subsys}
 	raw = append(raw, tmp)
 
 	// verdict -> accept
-	tmp = bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictAccept}
+	tmp = bpf.RawInstruction{Op: unix.BPF_RET | unix.BPF_K, K: bpfVerdictAccept}
 	raw = append(raw, tmp)
 
 	return raw
@@ -330,7 +306,7 @@ func constructFilter(subsys Table, filters []ConnAttr) ([]bpf.RawInstruction, er
 	}
 
 	// final verdict -> Accept
-	finalVerdict := bpf.RawInstruction{Op: bpfRET | bpfK, K: bpfVerdictAccept}
+	finalVerdict := bpf.RawInstruction{Op: unix.BPF_RET | unix.BPF_K, K: bpfVerdictAccept}
 	raw = append(raw, finalVerdict)
 
 	if len(raw) >= bpfMAXINSTR {
