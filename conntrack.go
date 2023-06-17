@@ -100,6 +100,13 @@ func Open(config *Config) (*Nfct, error) {
 
 // Close the connection to the conntrack subsystem.
 func (nfct *Nfct) Close() error {
+	if nfct.ctxCancel != nil {
+		nfct.ctxCancel()
+
+		// Block until filters are removed and socket unsubscribed from groups
+		<-nfct.shutdown
+	}
+
 	if nfct.errChan != nil {
 		close(nfct.errChan)
 	}
@@ -361,6 +368,9 @@ func (nfct *Nfct) RegisterFiltered(ctx context.Context, t Table, group NetlinkGr
 }
 
 func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, filter []ConnAttr, fn func(c Con) int) error {
+	nfct.ctx, nfct.ctxCancel = context.WithCancel(ctx)
+	nfct.shutdown = make(chan struct{})
+
 	if err := nfct.manageGroups(t, uint32(groups), true); err != nil {
 		return err
 	}
@@ -394,7 +404,7 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 	go func() {
 		go func() {
 			// block until context is done
-			<-ctx.Done()
+			<-nfct.ctx.Done()
 			// Set the read deadline to a point in the past to interrupt
 			// possible blocking Receive() calls.
 			nfct.Con.SetReadDeadline(time.Now().Add(-1 * time.Second))
@@ -405,17 +415,17 @@ func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, fi
 			if err := nfct.manageGroups(t, uint32(groups), false); err != nil {
 				nfct.logger.Printf("could not unsubscribe from group: %v", err)
 			}
-
+			close(nfct.shutdown)
 		}()
 
 		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
 			reply, err := nfct.Con.Receive()
 			if err != nil {
+				if nfct.ctx.Err() != nil {
+					// TODO: Here we ignore internal/poll.ErrFileClosing which is expected after
+					//       nfct.ctx is done. Maybe improve graceful handling.
+					return
+				}
 				if opError, ok := err.(*netlink.OpError); ok {
 					if opError.Timeout() || opError.Temporary() {
 						continue

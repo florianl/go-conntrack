@@ -1,6 +1,7 @@
 package conntrack
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -75,6 +76,10 @@ type Nfct struct {
 	errChan chan error
 
 	setWriteTimeout func() error
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+	shutdown  chan struct{}
 
 	addConntrackInformation bool
 }
