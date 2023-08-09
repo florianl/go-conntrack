@@ -225,15 +225,17 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	raw = append(raw, tmps...)
 
 	// negate filter
+	jump := uint8(0)
 	if filters[0].Negate {
 		raw = append(raw, bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JA, K: 1})
+		jump = 1
 	}
 
 	// Failed jumps are set to 255. Now we correct them to the actual failed jump instruction
 	j := uint8(1)
 	for i := len(raw) - 1; i > 0; i-- {
 		if (raw[i].Jt == 255) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
-			raw[i].Jt = j
+			raw[i].Jt = j - jump
 		} else if (raw[i].Jf == 255) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
 			raw[i].Jf = j - 1
 		}
