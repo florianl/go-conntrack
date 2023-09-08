@@ -36,10 +36,19 @@ jobs:
       run: diff <(echo -n) <(gofmt -d .)
     - name: staticcheck.io
       if: matrix.platform == 'ubuntu-latest' && startsWith(matrix.go-version, '1.20')
-      # https://github.com/actions/setup-go/issues/14
-      run: |
-        export PATH=$PATH:$(go env GOPATH)/bin
-        go install honnef.co/go/tools/cmd/staticcheck@2023.1
-        staticcheck -checks all .
+      uses: dominikh/staticcheck-action@v1.3.0
+      with:
+        version: "2023.1.5"
+        install-go: false
+        cache-key: ${{ matrix.go-version }}
+        working-directory: .
+    - name: staticcheck.io - internal
+      if: matrix.platform == 'ubuntu-latest' && startsWith(matrix.go-version, '1.20')
+      uses: dominikh/staticcheck-action@v1.3.0
+      with:
+        version: "2023.1.5"
+        install-go: false
+        cache-key: ${{ matrix.go-version }}
+        working-directory: internal
         # ignore should not use ALL_CAPS in Go names in internal/
-        staticcheck -checks all,-ST1003 ./internal/...
+        checks: all,-ST1003
