@@ -22,6 +22,8 @@ var (
 const (
 	bpfMAXINSTR = 4096
 
+	failedJump = uint8(255)
+
 	bpfVerdictAccept = 0xffffffff
 	bpfVerdictReject = 0x00000000
 )
@@ -185,7 +187,6 @@ func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	nested := len(filterCheck[filters[0].Type].nest)
-	failed := uint8(255)
 
 	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 20
 	tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IMM, K: 0x14}
@@ -200,7 +201,7 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 			raw = append(raw, tmp)
 
 			// jump, if nest not found
-			tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: failed}
+			tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: failedJump}
 			raw = append(raw, tmp)
 
 			tmp = bpf.RawInstruction{Op: unix.BPF_ALU | unix.BPF_ADD | unix.BPF_K, K: 4}
@@ -214,7 +215,7 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	tmp = bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, K: 0xfffff00c}
 	raw = append(raw, tmp)
 
-	tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: failed}
+	tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: failedJump}
 	raw = append(raw, tmp)
 
 	tmp = bpf.RawInstruction{Op: unix.BPF_MISC | unix.BPF_TAX}
@@ -234,9 +235,9 @@ func filterAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	// Failed jumps are set to 255. Now we correct them to the actual failed jump instruction
 	j := uint8(1)
 	for i := len(raw) - 1; i > 0; i-- {
-		if (raw[i].Jt == 255) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
+		if (raw[i].Jt == failedJump) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
 			raw[i].Jt = j - jump
-		} else if (raw[i].Jf == 255) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
+		} else if (raw[i].Jf == failedJump) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
 			raw[i].Jf = j - 1
 		}
 		j++
@@ -302,7 +303,12 @@ func constructFilter(subsys Table, filters []ConnAttr) ([]bpf.RawInstruction, er
 	// We can not simple range over the map, because the order of selected items can vary
 	for key := 0; key <= int(attrMax); key++ {
 		if x, ok := filterMap[ConnAttrType(key)]; ok {
-			tmp = filterAttribute(x)
+			switch key {
+			case int(AttrMark):
+				tmp = filterMarkAttribute(x)
+			default:
+				tmp = filterAttribute(x)
+			}
 			raw = append(raw, tmp...)
 		}
 	}
@@ -315,6 +321,67 @@ func constructFilter(subsys Table, filters []ConnAttr) ([]bpf.RawInstruction, er
 		return nil, ErrFilterLength
 	}
 	return raw, nil
+}
+
+func filterMarkAttribute(filters []ConnAttr) []bpf.RawInstruction {
+	var raw []bpf.RawInstruction
+
+	// sizeof(nlmsghdr) + sizeof(nfgenmsg) = 20
+	tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IMM, K: 0x14}
+	raw = append(raw, tmp)
+
+	// find final attribute
+	tmp = bpf.RawInstruction{Op: unix.BPF_LDX | unix.BPF_IMM, K: uint32(filterCheck[filters[0].Type].ct)}
+	raw = append(raw, tmp)
+	tmp = bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, K: 0xfffff00c}
+	raw = append(raw, tmp)
+
+	tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: 0, Jt: 2}
+	raw = append(raw, tmp)
+
+	tmp = bpf.RawInstruction{Op: unix.BPF_MISC | unix.BPF_TAX}
+	raw = append(raw, tmp)
+
+	tmp = bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_W | unix.BPF_IND, K: uint32(len(filters[0].Data))}
+	raw = append(raw, tmp)
+
+	tmp = bpf.RawInstruction{Op: unix.BPF_MISC | unix.BPF_TAX}
+	raw = append(raw, tmp)
+
+	for _, filter := range filters {
+		var dataLen = len(filter.Data)
+		for i := 0; i < (int(dataLen) / 4); i++ {
+			mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
+			tmp = bpf.RawInstruction{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, K: mask}
+			raw = append(raw, tmp)
+			val := encodeValue(filter.Data[i*4 : (i+1)*4])
+			val &= mask
+			tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jt: failedJump}
+			raw = append(raw, tmp)
+			tmp = bpf.RawInstruction{Op: unix.BPF_MISC | unix.BPF_TXA}
+			raw = append(raw, tmp)
+		}
+	}
+
+	var j uint8 = 1
+
+	// Failed jumps are set to 255. Now we correct them to the actual failed jump instruction
+	for i := len(raw) - 1; i > 0; i-- {
+		if (raw[i].Jt == failedJump) && (raw[i].Op == unix.BPF_JMP|unix.BPF_JEQ|unix.BPF_K) {
+			raw[i].Jt = j
+		}
+		j++
+	}
+
+	// negate filter
+	if filters[0].Negate {
+		raw = append(raw, bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JA, K: 1})
+	}
+
+	// reject
+	raw = append(raw, bpf.RawInstruction{Op: unix.BPF_RET | unix.BPF_K, K: bpfVerdictReject})
+
+	return raw
 }
 
 func (nfct *Nfct) attachFilter(subsys Table, filters []ConnAttr) error {
