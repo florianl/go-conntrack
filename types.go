@@ -75,6 +75,8 @@ type Nfct struct {
 
 	errChan chan error
 
+	debug bool
+
 	setWriteTimeout func() error
 
 	ctx       context.Context

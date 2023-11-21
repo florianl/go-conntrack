@@ -3,7 +3,9 @@ package conntrack
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/florianl/go-conntrack/internal/unix"
 	"golang.org/x/net/bpf"
@@ -385,14 +387,70 @@ func filterMarkAttribute(filters []ConnAttr) []bpf.RawInstruction {
 }
 
 func (nfct *Nfct) attachFilter(subsys Table, filters []ConnAttr) error {
-
 	bpfFilters, err := constructFilter(subsys, filters)
 	if err != nil {
 		return err
 	}
+	if nfct.debug {
+		fmtInstructions := fmtRawInstructions(bpfFilters)
+		fmt.Print(strings.Join(fmtInstructions, ""))
+	}
+
 	return nfct.Con.SetBPF(bpfFilters)
 }
 
 func (nfct *Nfct) removeFilter() error {
 	return nfct.Con.RemoveBPF()
+}
+
+func fmtRawInstruction(index int, raw bpf.RawInstruction) string {
+	code := code2str(raw.Op & 0xFFFF)
+	return fmt.Sprintf("(%.4x) code=%30s\tjt=%.2x jf=%.2x k=%.8x\n",
+		index,
+		code,
+		raw.Jt&0xFF,
+		raw.Jf&0xFF,
+		raw.K&0xFFFFFFFF)
+}
+
+func fmtRawInstructions(raw []bpf.RawInstruction) []string {
+	output := make([]string, len(raw))
+
+	for i, instr := range raw {
+		output[i] = fmtRawInstruction(i, instr)
+	}
+
+	return output
+}
+
+func code2str(op uint16) string {
+	switch op {
+	case unix.BPF_LD | unix.BPF_IMM:
+		return "BPF_LD|BPF_IMM"
+	case unix.BPF_LDX | unix.BPF_IMM:
+		return "BPF_LDX|BPF_IMM"
+	case unix.BPF_LD | unix.BPF_B | unix.BPF_ABS:
+		return "BPF_LD|BPF_B|BPF_ABS"
+	case unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K:
+		return "BPF_JMP|BPF_JEQ|BPF_K"
+	case unix.BPF_ALU | unix.BPF_AND | unix.BPF_K:
+		return "BPF_ALU|BPF_AND|BPF_K"
+	case unix.BPF_JMP | unix.BPF_JA:
+		return "BPF_JMP|BPF_JA"
+	case unix.BPF_RET | unix.BPF_K:
+		return "BPF_RET|BPF_K"
+	case unix.BPF_ALU | unix.BPF_ADD | unix.BPF_K:
+		return "BPF_ALU|BPF_ADD|BPF_K"
+	case unix.BPF_MISC | unix.BPF_TAX:
+		return "BPF_MISC|BPF_TAX"
+	case unix.BPF_MISC | unix.BPF_TXA:
+		return "BPF_MISC|BPF_TXA"
+	case unix.BPF_LD | unix.BPF_B | unix.BPF_IND:
+		return "BPF_LD|BPF_B|BPF_IND"
+	case unix.BPF_LD | unix.BPF_H | unix.BPF_IND:
+		return "BPF_LD|BPF_H|BPF_IND"
+	case unix.BPF_LD | unix.BPF_W | unix.BPF_IND:
+		return "BPF_LD|BPF_W|BPF_IND"
+	}
+	return "UNKNOWN_INSTRUCTION"
 }

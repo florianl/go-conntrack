@@ -367,6 +367,11 @@ func (nfct *Nfct) RegisterFiltered(ctx context.Context, t Table, group NetlinkGr
 	return nfct.register(ctx, t, group, filter, fn)
 }
 
+// EnableDebug print bpf filter for RegisterFiltered function
+func (nfct *Nfct) EnableDebug() {
+	nfct.debug = true
+}
+
 func (nfct *Nfct) register(ctx context.Context, t Table, groups NetlinkGroup, filter []ConnAttr, fn func(c Con) int) error {
 	nfct.ctx, nfct.ctxCancel = context.WithCancel(ctx)
 	nfct.shutdown = make(chan struct{})
