@@ -4,11 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sort"
-	"strings"
-
 	"github.com/florianl/go-conntrack/internal/unix"
 	"golang.org/x/net/bpf"
+	"sort"
 )
 
 // Various errors which may occur when processing filters
@@ -393,7 +391,9 @@ func (nfct *Nfct) attachFilter(subsys Table, filters []ConnAttr) error {
 	}
 	if nfct.debug {
 		fmtInstructions := fmtRawInstructions(bpfFilters)
-		fmt.Print(strings.Join(fmtInstructions, ""))
+		fmt.Println("---BPF filter start---")
+		fmt.Print(fmtInstructions)
+		fmt.Println("---BPF filter end---")
 	}
 
 	return nfct.Con.SetBPF(bpfFilters)
@@ -413,11 +413,11 @@ func fmtRawInstruction(index int, raw bpf.RawInstruction) string {
 		raw.K&0xFFFFFFFF)
 }
 
-func fmtRawInstructions(raw []bpf.RawInstruction) []string {
-	output := make([]string, len(raw))
+func fmtRawInstructions(raw []bpf.RawInstruction) string {
+	var output string
 
 	for i, instr := range raw {
-		output[i] = fmtRawInstruction(i, instr)
+		output += fmtRawInstruction(i, instr)
 	}
 
 	return output

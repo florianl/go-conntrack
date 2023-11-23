@@ -2,8 +2,8 @@ package conntrack
 
 import (
 	"encoding/binary"
+	"errors"
 	"github.com/florianl/go-conntrack/internal/unix"
-	"strings"
 	"testing"
 
 	"golang.org/x/net/bpf"
@@ -280,11 +280,11 @@ func TestAttrMarkFilter(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			rawInstr, err := constructFilter(tc.table, tc.filters)
-			if err != tc.err {
+			if !errors.Is(err, tc.err) {
 				t.Fatal(err)
 			}
 			if len(rawInstr) != len(tc.rawInstr) {
-				t.Fatalf("different length:\n- want:\n%s\n-  got:\n%s", strings.Join(fmtRawInstructions(tc.rawInstr), ""), strings.Join(fmtRawInstructions(rawInstr), ""))
+				t.Fatalf("different length:\n- want:\n%s\n-  got:\n%s", fmtRawInstructions(tc.rawInstr), fmtRawInstructions(rawInstr))
 			}
 			var isErr bool
 			for i, v := range rawInstr {
@@ -295,7 +295,7 @@ func TestAttrMarkFilter(t *testing.T) {
 			}
 
 			if isErr {
-				t.Fatalf("unexpected reply:\n- want:\n%s\n-  got:\n%s", strings.Join(fmtRawInstructions(tc.rawInstr), ""), strings.Join(fmtRawInstructions(rawInstr), ""))
+				t.Fatalf("unexpected reply:\n- want:\n%s\n-  got:\n%s", fmtRawInstructions(tc.rawInstr), fmtRawInstructions(rawInstr))
 			}
 		})
 	}
