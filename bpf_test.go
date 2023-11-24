@@ -1,6 +1,9 @@
 package conntrack
 
 import (
+	"encoding/binary"
+	"errors"
+	"github.com/florianl/go-conntrack/internal/unix"
 	"testing"
 
 	"golang.org/x/net/bpf"
@@ -167,6 +170,133 @@ func TestConstructFilter(t *testing.T) {
 				}
 			}
 
+		})
+	}
+}
+
+func TestAttrMarkFilter(t *testing.T) {
+	mark1ByteValue := make([]byte, 4)
+	binary.BigEndian.PutUint32(mark1ByteValue, 1)
+	mark10ByteValue := make([]byte, 4)
+	binary.BigEndian.PutUint32(mark10ByteValue, 10)
+	mark11ByteValue := make([]byte, 4)
+	binary.BigEndian.PutUint32(mark11ByteValue, 11)
+	mark50ByteValue := make([]byte, 4)
+	binary.BigEndian.PutUint32(mark50ByteValue, 50)
+	mark1000ByteValue := make([]byte, 4)
+	binary.BigEndian.PutUint32(mark1000ByteValue, 1000)
+
+	tests := []struct {
+		name     string
+		table    Table
+		filters  []ConnAttr
+		rawInstr []bpf.RawInstruction
+		err      error
+	}{
+		{name: "mark positive filter: [1]", table: Conntrack, filters: []ConnAttr{
+			{Type: AttrMark, Data: mark1ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: false},
+		}, rawInstr: []bpf.RawInstruction{
+			//--- check subsys ---
+			{Op: unix.BPF_LDX | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000004},
+			{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_IND, Jt: 0x00, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x01, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			//--- check mark ---
+			{Op: unix.BPF_LD | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000014},
+			{Op: unix.BPF_LDX | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000008},
+			{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, Jt: 0x00, Jf: 0x00, K: 0xfffff00c},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x02, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_MISC | unix.BPF_TAX, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_LD | unix.BPF_W | unix.BPF_IND, Jt: 0x00, Jf: 0x00, K: 0x00000004},
+			{Op: unix.BPF_MISC | unix.BPF_TAX, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x02, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_MISC | unix.BPF_TXA, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			//---- final verdict ----
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+		}},
+		{name: "mark positive filter: [10,50,1000]", table: Conntrack, filters: []ConnAttr{
+			{Type: AttrMark, Data: mark10ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: false},
+			{Type: AttrMark, Data: mark50ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: false},
+			{Type: AttrMark, Data: mark1000ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: false},
+		}, rawInstr: []bpf.RawInstruction{
+			//--- check subsys ---
+			{Op: unix.BPF_LDX | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000004},
+			{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_IND, Jt: 0x00, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x01, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			//--- check mark ---
+			{Op: unix.BPF_LD | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000014},
+			{Op: unix.BPF_LDX | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000008},
+			{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, Jt: 0x00, Jf: 0x00, K: 0xfffff00c},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x02, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_MISC | unix.BPF_TAX, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_LD | unix.BPF_W | unix.BPF_IND, Jt: 0x00, Jf: 0x00, K: 0x00000004},
+			{Op: unix.BPF_MISC | unix.BPF_TAX, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x08, Jf: 0x00, K: 0x0000000a},
+			{Op: unix.BPF_MISC | unix.BPF_TXA, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x05, Jf: 0x00, K: 0x00000032},
+			{Op: unix.BPF_MISC | unix.BPF_TXA, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x02, Jf: 0x00, K: 0x000003e8},
+			{Op: unix.BPF_MISC | unix.BPF_TXA, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			//---- final verdict ----
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+		}},
+		{name: "mark negative filter: [10,11]", table: Conntrack, filters: []ConnAttr{
+			{Type: AttrMark, Data: mark10ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: true},
+			{Type: AttrMark, Data: mark11ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: true},
+		}, rawInstr: []bpf.RawInstruction{
+			//--- check subsys ---
+			{Op: unix.BPF_LDX | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000004},
+			{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_IND, Jt: 0x00, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x01, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			//--- check mark ---
+			{Op: unix.BPF_LD | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000014},
+			{Op: unix.BPF_LDX | unix.BPF_IMM, Jt: 0x00, Jf: 0x00, K: 0x00000008},
+			{Op: unix.BPF_LD | unix.BPF_B | unix.BPF_ABS, Jt: 0x00, Jf: 0x00, K: 0xfffff00c},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x02, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_MISC | unix.BPF_TAX, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_LD | unix.BPF_W | unix.BPF_IND, Jt: 0x00, Jf: 0x00, K: 0x00000004},
+			{Op: unix.BPF_MISC | unix.BPF_TAX, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x05, Jf: 0x00, K: 0x0000000a},
+			{Op: unix.BPF_MISC | unix.BPF_TXA, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+			{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, Jt: 0x02, Jf: 0x00, K: 0x0000000b},
+			{Op: unix.BPF_MISC | unix.BPF_TXA, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			{Op: unix.BPF_JMP | unix.BPF_JA, Jt: 0x00, Jf: 0x00, K: 0x00000001},
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
+			//---- final verdict ----
+			{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
+		}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rawInstr, err := constructFilter(tc.table, tc.filters)
+			if !errors.Is(err, tc.err) {
+				t.Fatal(err)
+			}
+			if len(rawInstr) != len(tc.rawInstr) {
+				t.Fatalf("different length:\n- want:\n%s\n-  got:\n%s", fmtRawInstructions(tc.rawInstr), fmtRawInstructions(rawInstr))
+			}
+			var isErr bool
+			for i, v := range rawInstr {
+				if v != tc.rawInstr[i] {
+					t.Errorf("unexpected instruction:\n- want:\n%s\n-  got:\n%s", fmtRawInstruction(i, tc.rawInstr[i]), fmtRawInstruction(i, rawInstr[i]))
+					isErr = true
+				}
+			}
+
+			if isErr {
+				t.Fatalf("unexpected reply:\n- want:\n%s\n-  got:\n%s", fmtRawInstructions(tc.rawInstr), fmtRawInstructions(rawInstr))
+			}
 		})
 	}
 }
