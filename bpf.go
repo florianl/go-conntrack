@@ -391,9 +391,9 @@ func (nfct *Nfct) attachFilter(subsys Table, filters []ConnAttr) error {
 	}
 	if nfct.debug {
 		fmtInstructions := fmtRawInstructions(bpfFilters)
-		fmt.Println("---BPF filter start---")
-		fmt.Print(fmtInstructions)
-		fmt.Println("---BPF filter end---")
+		nfct.logger.Println("---BPF filter start---")
+		nfct.logger.Print(fmtInstructions)
+		nfct.logger.Println("---BPF filter end---")
 	}
 
 	return nfct.Con.SetBPF(bpfFilters)
