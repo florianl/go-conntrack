@@ -400,6 +400,8 @@ const (
 	AttrExpClass  ConnAttrType = iota /* u32 bits */
 	AttrExpNATDir ConnAttrType = iota /* u32 bits */
 
+	// for internal use only
+	attrUnspec ConnAttrType = iota
 )
 
 // Various errors which may occur when processing attributes
