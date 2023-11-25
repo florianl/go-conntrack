@@ -143,11 +143,13 @@ func compareValue(masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filt
 			raw = append(raw, tmp)
 		}
 	} else {
-		tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IND | bpfOp, K: uint32(4)}
-		raw = append(raw, tmp)
+		if !sameAttrType {
+			tmp := bpf.RawInstruction{Op: unix.BPF_LD | unix.BPF_IND | bpfOp, K: uint32(4)}
+			raw = append(raw, tmp)
+		}
 		jumps := (filterLen - i)
 		val := encodeValue(filter.Data)
-		tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jt: uint8(jumps)}
+		tmp := bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jt: uint8(jumps)}
 		raw = append(raw, tmp)
 
 	}
@@ -176,9 +178,11 @@ func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 		return filters[i].Type > filters[j].Type
 	})
 
+	lastFilterType := attrUnspec
 	for i, filter := range filters {
-		tmp := compareValue(masking, uint32(len(filters)), uint32(dataLen), uint32(i), bpfOp, filter)
+		tmp := compareValue(masking, lastFilterType == filter.Type, uint32(len(filters)), uint32(dataLen), uint32(i), bpfOp, filter)
 		raw = append(raw, tmp...)
+		lastFilterType = filter.Type
 	}
 
 	return raw
