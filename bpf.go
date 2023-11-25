@@ -4,9 +4,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sort"
+
 	"github.com/florianl/go-conntrack/internal/unix"
 	"golang.org/x/net/bpf"
-	"sort"
 )
 
 // Various errors which may occur when processing filters
@@ -123,7 +124,7 @@ func encodeValue(data []byte) (val uint32) {
 	return
 }
 
-func compareValue(masking bool, filterLen, dataLen, i uint32, bpfOp uint16, filter ConnAttr) []bpf.RawInstruction {
+func compareValue(masking bool, sameAttrType bool, filterLen, dataLen, i uint32, bpfOp uint16, filter ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 
 	if masking {
@@ -358,10 +359,12 @@ func filterMarkAttribute(filters []ConnAttr) []bpf.RawInstruction {
 			mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
 			tmp = bpf.RawInstruction{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, K: mask}
 			raw = append(raw, tmp)
+
 			val := encodeValue(filter.Data[i*4 : (i+1)*4])
 			val &= mask
 			tmp = bpf.RawInstruction{Op: unix.BPF_JMP | unix.BPF_JEQ | unix.BPF_K, K: val, Jt: failedJump}
 			raw = append(raw, tmp)
+
 			tmp = bpf.RawInstruction{Op: unix.BPF_MISC | unix.BPF_TXA}
 			raw = append(raw, tmp)
 		}
@@ -407,11 +410,9 @@ func (nfct *Nfct) removeFilter() error {
 	return nfct.Con.RemoveBPF()
 }
 
-func fmtRawInstruction(index int, raw bpf.RawInstruction) string {
-	code := code2str(raw.Op & 0xFFFF)
-	return fmt.Sprintf("(%.4x) code=%30s\tjt=%.2x jf=%.2x k=%.8x\n",
-		index,
-		code,
+func fmtRawInstruction(raw bpf.RawInstruction) string {
+	return fmt.Sprintf("code=%30s\tjt=%.2x jf=%.2x k=%.8x",
+		code2str(raw.Op&0xFFFF),
 		raw.Jt&0xFF,
 		raw.Jf&0xFF,
 		raw.K&0xFFFFFFFF)
@@ -421,12 +422,13 @@ func fmtRawInstructions(raw []bpf.RawInstruction) string {
 	var output string
 
 	for i, instr := range raw {
-		output += fmtRawInstruction(i, instr)
+		output += fmt.Sprintf("(%.4x) %s\n", i, fmtRawInstruction(instr))
 	}
 
 	return output
 }
 
+// From libnetfilter_conntrack:src/conntrack/bsf.c
 func code2str(op uint16) string {
 	switch op {
 	case unix.BPF_LD | unix.BPF_IMM:
