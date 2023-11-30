@@ -363,6 +363,9 @@ func (nfct *Nfct) Register(ctx context.Context, t Table, group NetlinkGroup, fn 
 // If your function returns something different than 0, it will stop.
 // ConnAttr of the same ConnAttrType will be linked by an OR operation.
 // Otherwise, ConnAttr of different ConnAttrType will be connected by an AND operation for the filter.
+// Note: When you add filters for IPv4 specific fields, it will automatically filter for IPv4-only events.
+// The same rule applies for IPv6. However, if you apply a filter for both IPv4- and IPv6-specific fields,
+// it will result in filtering out all events, meaning no event will match.
 func (nfct *Nfct) RegisterFiltered(ctx context.Context, t Table, group NetlinkGroup, filter []ConnAttr, fn HookFunc) error {
 	return nfct.register(ctx, t, group, filter, fn)
 }
