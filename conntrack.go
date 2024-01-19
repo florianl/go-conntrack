@@ -113,6 +113,11 @@ func (nfct *Nfct) Close() error {
 	return nfct.Con.Close()
 }
 
+// SetOption allows to enable or disable netlink socket options.
+func (nfct *Nfct) SetOption(o netlink.ConnOption, enable bool) error {
+	return nfct.Con.SetOption(o, enable)
+}
+
 // Flush a conntrack subsystem
 func (nfct *Nfct) Flush(t Table, f Family) error {
 	data := putExtraHeader(uint8(f), unix.NFNETLINK_V0, 0)
