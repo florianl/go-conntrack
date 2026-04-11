@@ -339,20 +339,24 @@ func extractTCPInfo(v *TCPInfo, logger *log.Logger, data []byte) error {
 			flags := &TCPFlags{}
 			tmp := ad.Bytes()
 			if len(tmp) > 0 {
-				flags.Flags = &tmp[0]
+				flag := tmp[0]
+				flags.Flags = &flag
 			}
 			if len(tmp) > 1 {
-				flags.Mask = &tmp[1]
+				mask := tmp[1]
+				flags.Mask = &mask
 			}
 			v.FlagsOrig = flags
 		case ctaProtoinfoTCPFlagsRepl:
 			flags := &TCPFlags{}
 			tmp := ad.Bytes()
 			if len(tmp) > 0 {
-				flags.Flags = &tmp[0]
+				flag := tmp[0]
+				flags.Flags = &flag
 			}
 			if len(tmp) > 1 {
-				flags.Mask = &tmp[1]
+				mask := tmp[1]
+				flags.Mask = &mask
 			}
 			v.FlagsReply = flags
 		default:
