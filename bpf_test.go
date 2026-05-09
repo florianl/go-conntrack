@@ -19,14 +19,15 @@ func TestOldConstructFilter(t *testing.T) {
 		err      error
 	}{
 		// Example from libnetfilter_conntrack/utils/conntrack_filter.c
-		{name: "conntrack_filter.c", table: Conntrack, filters: []ConnAttr{
-			{Type: AttrOrigL4Proto, Data: []byte{0x11}}, // TCP
-			{Type: AttrOrigL4Proto, Data: []byte{0x06}}, // UDP
-			{Type: AttrTCPState, Data: []byte{0x3}},     // TCP_CONNTRACK_ESTABLISHED
-			{Type: AttrOrigIPv4Src, Data: []byte{0x7F, 0x0, 0x0, 0x1}, Mask: []byte{0xff, 0xff, 0xff, 0xff}, Negate: true}, // SrcIP != 127.0.0.1
-			{Type: AttrOrigIPv6Src, Data: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, // SrcIP != ::1
-				Mask: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, Negate: true},
-		},
+		{
+			name: "conntrack_filter.c", table: Conntrack, filters: []ConnAttr{
+				{Type: AttrOrigL4Proto, Data: []byte{0x11}}, // TCP
+				{Type: AttrOrigL4Proto, Data: []byte{0x06}}, // UDP
+				{Type: AttrTCPState, Data: []byte{0x3}},     // TCP_CONNTRACK_ESTABLISHED
+				{Type: AttrOrigIPv4Src, Data: []byte{0x7F, 0x0, 0x0, 0x1}, Mask: []byte{0xff, 0xff, 0xff, 0xff}, Negate: true}, // SrcIP != 127.0.0.1
+				{Type: AttrOrigIPv6Src, Data: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, // SrcIP != ::1
+					Mask: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, Negate: true},
+			},
 			rawInstr: []bpf.RawInstruction{
 				{Op: 0x0001, Jt: 0x00, Jf: 0x00, K: 0x00000004},
 				{Op: 0x0050, Jt: 0x00, Jf: 0x00, K: 0x00000001},
@@ -171,7 +172,6 @@ func TestOldConstructFilter(t *testing.T) {
 					t.Fatalf("unexpected reply:\n- want: %#v\n-  got: %#v", tc.rawInstr, rawInstr)
 				}
 			}
-
 		})
 	}
 }
@@ -219,7 +219,8 @@ func TestConstructFilter(t *testing.T) {
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
 				//---- final verdict ----
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
-			}},
+			},
+		},
 		"mark positive filter: [10,50,1000]": {
 			table: Conntrack,
 			filters: []ConnAttr{
@@ -253,7 +254,8 @@ func TestConstructFilter(t *testing.T) {
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
 				//---- final verdict ----
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
-			}},
+			},
+		},
 		"mark negative filter: [10,11]": {
 			table: Conntrack, filters: []ConnAttr{
 				{Type: AttrMark, Data: mark10ByteValue, Mask: []byte{255, 255, 255, 255}, Negate: true},
@@ -283,7 +285,8 @@ func TestConstructFilter(t *testing.T) {
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
 				//---- final verdict ----
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
-			}},
+			},
+		},
 		"tcp": {
 			table: Conntrack,
 			filters: []ConnAttr{
@@ -314,7 +317,8 @@ func TestConstructFilter(t *testing.T) {
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0x00000000},
 				// ---- final verdict ----
 				{Op: unix.BPF_RET | unix.BPF_K, Jt: 0x00, Jf: 0x00, K: 0xffffffff},
-			}},
+			},
+		},
 		"tcp or udp": {
 			table: Conntrack,
 			filters: []ConnAttr{

@@ -27,5 +27,4 @@ func ExampleNfct_Register() {
 	}
 
 	time.Sleep(10 * time.Second)
-
 }
