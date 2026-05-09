@@ -85,7 +85,6 @@ func nestAttributes(logger *log.Logger, filters *Con) ([]byte, error) {
 }
 
 func nestExpectedAttributes(logger *log.Logger, ae *netlink.AttributeEncoder, filters *Exp) error {
-
 	if filters.Master != nil {
 		data, err := marshalIPTuple(logger, filters.Master)
 		if err != nil {

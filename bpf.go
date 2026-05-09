@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/florianl/go-conntrack/internal/unix"
 	"golang.org/x/net/bpf"
@@ -121,7 +122,7 @@ func encodeValue(data []byte) (val uint32) {
 	case 4:
 		val = binary.BigEndian.Uint32(data)
 	}
-	return
+	return val
 }
 
 func compareValue(masking bool, sameAttrType bool, filterLen, dataLen, i uint32, bpfOp uint16, filter ConnAttr) []bpf.RawInstruction {
@@ -162,7 +163,7 @@ func compareValues(filters []ConnAttr) []bpf.RawInstruction {
 	var raw []bpf.RawInstruction
 	var bpfOp uint16
 	masking := filterCheck[filters[0].Type].mask
-	var dataLen = len(filters[0].Data)
+	dataLen := len(filters[0].Data)
 
 	switch dataLen {
 	case 1:
@@ -354,7 +355,7 @@ func filterMarkAttribute(filters []ConnAttr) []bpf.RawInstruction {
 	raw = append(raw, tmp)
 
 	for _, filter := range filters {
-		var dataLen = len(filter.Data)
+		dataLen := len(filter.Data)
 		for i := 0; i < (int(dataLen) / 4); i++ {
 			mask := encodeValue(filter.Mask[i*4 : (i+1)*4])
 			tmp = bpf.RawInstruction{Op: unix.BPF_ALU | unix.BPF_AND | unix.BPF_K, K: mask}
@@ -419,13 +420,13 @@ func fmtRawInstruction(raw bpf.RawInstruction) string {
 }
 
 func fmtRawInstructions(raw []bpf.RawInstruction) string {
-	var output string
+	var output strings.Builder
 
 	for i, instr := range raw {
-		output += fmt.Sprintf("(%.4x) %s\n", i, fmtRawInstruction(instr))
+		output.WriteString(fmt.Sprintf("(%.4x) %s\n", i, fmtRawInstruction(instr)))
 	}
 
-	return output
+	return output.String()
 }
 
 // From libnetfilter_conntrack:src/conntrack/bsf.c
