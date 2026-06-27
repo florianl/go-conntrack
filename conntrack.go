@@ -576,7 +576,6 @@ func (nfct *Nfct) send(req netlink.Message) error {
 }
 
 func (nfct *Nfct) query(req netlink.Message) ([]Con, error) {
-
 	if err := nfct.send(req); err != nil {
 		return nil, err
 	}
@@ -657,7 +656,6 @@ func putExtraHeader(familiy, version uint8, resid uint16) []byte {
 type extractFunc func(*log.Logger, *Con, []byte) error
 
 func parseConnectionMsg(logger *log.Logger, c *Con, msg netlink.Message, reqTable, reqType int) error {
-
 	if msg.Header.Type == netlink.Error {
 		errMsg, err := unmarschalErrMsg(msg.Data)
 		if err != nil {
