@@ -14,41 +14,43 @@ func TestFlush(t *testing.T) {
 		family Family
 		want   []netlink.Message
 	}{
-		{name: "Flush IPv4", family: IPv4, want: []netlink.Message{
-			{
-				Header: netlink.Header{
-					Length: 20,
-					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
-					Type: netlink.HeaderType(1<<8 | 2),
-					// NLM_F_REQUEST|NLM_F_ACK
-					Flags: netlink.Request | netlink.Acknowledge,
-					// Can and will be ignored
-					Sequence: 0,
-					// Can and will be ignored
-					PID: nltest.PID,
+		{
+			name: "Flush IPv4", family: IPv4, want: []netlink.Message{
+				{
+					Header: netlink.Header{
+						Length: 20,
+						// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
+						Type: netlink.HeaderType(1<<8 | 2),
+						// NLM_F_REQUEST|NLM_F_ACK
+						Flags: netlink.Request | netlink.Acknowledge,
+						// Can and will be ignored
+						Sequence: 0,
+						// Can and will be ignored
+						PID: nltest.PID,
+					},
+					// nfgen_family=AF_INET, version=NFNETLINK_V0, res_id=htons(0)
+					Data: []byte{0x2, 0x0, 0x0, 0x0},
 				},
-				// nfgen_family=AF_INET, version=NFNETLINK_V0, res_id=htons(0)
-				Data: []byte{0x2, 0x0, 0x0, 0x0},
 			},
 		},
-		},
-		{name: "Flush IPv6", family: IPv6, want: []netlink.Message{
-			{
-				Header: netlink.Header{
-					Length: 20,
-					// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
-					Type: netlink.HeaderType(1<<8 | 2),
-					// NLM_F_REQUEST|NLM_F_ACK
-					Flags: netlink.Request | netlink.Acknowledge,
-					// Can and will be ignored
-					Sequence: 0,
-					// Can and will be ignored
-					PID: nltest.PID,
+		{
+			name: "Flush IPv6", family: IPv6, want: []netlink.Message{
+				{
+					Header: netlink.Header{
+						Length: 20,
+						// NFNL_SUBSYS_CTNETLINK<<8|IPCTNL_MSG_CT_DELETE
+						Type: netlink.HeaderType(1<<8 | 2),
+						// NLM_F_REQUEST|NLM_F_ACK
+						Flags: netlink.Request | netlink.Acknowledge,
+						// Can and will be ignored
+						Sequence: 0,
+						// Can and will be ignored
+						PID: nltest.PID,
+					},
+					// nfgen_family=AF_INET6, version=NFNETLINK_V0, res_id=htons(0)
+					Data: []byte{0xA, 0x0, 0x0, 0x0},
 				},
-				// nfgen_family=AF_INET6, version=NFNETLINK_V0, res_id=htons(0)
-				Data: []byte{0xA, 0x0, 0x0, 0x0},
 			},
-		},
 		},
 	}
 
@@ -95,13 +97,11 @@ func TestFlush(t *testing.T) {
 			if err := nfct.Flush(Conntrack, tc.family); err != nil {
 				t.Fatal(err)
 			}
-
 		})
 	}
 }
 
 func TestCreate(t *testing.T) {
-
 	srcIP := net.ParseIP("1.1.1.1")
 	dstIP := net.ParseIP("2.2.2.2")
 	var tcp uint8 = 17
@@ -133,11 +133,13 @@ func TestCreate(t *testing.T) {
 			},
 		}},
 		// Example from libnetfilter_conntrack/utils/conntrack_create.c
-		{name: "conntrack_create.c", attributes: Con{
-			Origin:    &IPTuple{Src: &srcIP, Dst: &dstIP, Proto: &ProtoTuple{Number: &tcp, SrcPort: &srcPort, DstPort: &dstPort}},
-			Reply:     &IPTuple{Src: &dstIP, Dst: &srcIP, Proto: &ProtoTuple{Number: &tcp, SrcPort: &dstPort, DstPort: &srcPort}},
-			Timeout:   &timeout,
-			ProtoInfo: &ProtoInfo{TCP: &TCPInfo{State: &tcpState}}},
+		{
+			name: "conntrack_create.c", attributes: Con{
+				Origin:    &IPTuple{Src: &srcIP, Dst: &dstIP, Proto: &ProtoTuple{Number: &tcp, SrcPort: &srcPort, DstPort: &dstPort}},
+				Reply:     &IPTuple{Src: &dstIP, Dst: &srcIP, Proto: &ProtoTuple{Number: &tcp, SrcPort: &dstPort, DstPort: &srcPort}},
+				Timeout:   &timeout,
+				ProtoInfo: &ProtoInfo{TCP: &TCPInfo{State: &tcpState}},
+			},
 			want: []netlink.Message{
 				{
 					Header: netlink.Header{
@@ -154,7 +156,8 @@ func TestCreate(t *testing.T) {
 					// nfgen_family=AF_INET, version=NFNETLINK_V0, NFNL_SUBSYS_CTNETLINK + netlinkes Attributes
 					Data: []byte{0x2, 0x0, 0x0, 0x1, 0x34, 0x0, 0x1, 0x80, 0x14, 0x0, 0x1, 0x80, 0x8, 0x0, 0x1, 0x0, 0x1, 0x1, 0x1, 0x1, 0x8, 0x0, 0x2, 0x0, 0x2, 0x2, 0x2, 0x2, 0x1c, 0x0, 0x2, 0x80, 0x5, 0x0, 0x1, 0x0, 0x11, 0x0, 0x0, 0x0, 0x6, 0x0, 0x2, 0x0, 0x0, 0x16, 0x0, 0x0, 0x6, 0x0, 0x3, 0x0, 0x0, 0xa, 0x0, 0x0, 0x34, 0x0, 0x2, 0x80, 0x14, 0x0, 0x1, 0x80, 0x8, 0x0, 0x1, 0x0, 0x2, 0x2, 0x2, 0x2, 0x8, 0x0, 0x2, 0x0, 0x1, 0x1, 0x1, 0x1, 0x1c, 0x0, 0x2, 0x80, 0x5, 0x0, 0x1, 0x0, 0x11, 0x0, 0x0, 0x0, 0x6, 0x0, 0x2, 0x0, 0x0, 0xa, 0x0, 0x0, 0x6, 0x0, 0x3, 0x0, 0x0, 0x16, 0x0, 0x0, 0x8, 0x0, 0x7, 0x0, 0x0, 0x0, 0x0, 0x64, 0x10, 0x0, 0x4, 0x80, 0xc, 0x0, 0x1, 0x80, 0x5, 0x0, 0x1, 0x0, 0x8, 0x0, 0x0, 0x0},
 				},
-			}},
+			},
+		},
 	}
 
 	for _, tc := range tests {
