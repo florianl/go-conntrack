@@ -1,4 +1,5 @@
 //go:build integration && linux
+// +build integration,linux
 
 package conntrack
 
