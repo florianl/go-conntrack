@@ -72,7 +72,7 @@ func (devNull) Write(p []byte) (int, error) {
 func Open(config *Config) (*Nfct, error) {
 	var nfct Nfct
 
-	con, err := netlink.Dial(unix.NETLINK_NETFILTER, &netlink.Config{NetNS: config.NetNS, DisableNSLockThread: config.DisableNSLockThread})
+	con, err := netlink.Dial(unix.NETLINK_NETFILTER, &netlink.Config{NetNS: config.NetNS})
 	if err != nil {
 		return nil, err
 	}
